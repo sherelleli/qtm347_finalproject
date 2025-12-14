@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>3. Neural Networks + Text Mining (Modern ML / Enrichment)</title>
+<title>Part 3: Neural Networks &amp; Text Mining</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -73,6 +73,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
 
 </head>
 
@@ -84,7 +113,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">3. Neural Networks + Text Mining (Modern ML / Enrichment)</h1>
+<h1 class="title">Part 3: Neural Networks &amp; Text Mining</h1>
 </div>
 
 
@@ -101,8 +130,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Data loading and prep</p>
-<div id="242a58f6" class="cell" data-execution_count="13">
+<p><strong>Person 3 - Anushka</strong></p>
+<p>Deliverables from this notebook: a word cloud, a NN vs tree accuracy comparison, and a training vs validation loss curve</p>
+<p>The goal of this section is to explore a flexible non-linear classifier (neural network) and extract qualitative context from categorical data via a simple text-mining visualization.</p>
+<section id="data-loading-and-prep" class="level3">
+<h3 class="anchored" data-anchor-id="data-loading-and-prep">Data loading and prep</h3>
+<div id="242a58f6" class="cell" data-execution_count="12">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> warnings</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -125,12 +158,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.neural_network <span class="im">import</span> MLPRegressor, MLPClassifier</span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> train_test_split, KFold, cross_val_score</span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.tree <span class="im">import</span> DecisionTreeRegressor, DecisionTreeClassifier</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> mean_squared_error, r2_score, mean_absolute_error</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> mean_squared_error, r2_score, mean_absolute_error, log_loss, accuracy_score, classification_report, confusion_matrix</span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuration</span></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>warnings.filterwarnings(<span class="st">'ignore'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="7dcbdcd6" class="cell" data-execution_count="3">
+<div id="7dcbdcd6" class="cell" data-execution_count="13">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'data/student-por.csv'</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Sample size: </span><span class="sc">{</span>df<span class="sc">.</span>shape[<span class="dv">0</span>]<span class="sc">}</span><span class="ss"> students, </span><span class="sc">{</span>df<span class="sc">.</span>shape[<span class="dv">1</span>]<span class="sc">}</span><span class="ss"> variables"</span>)</span>
@@ -149,7 +182,7 @@ int64     16
 
 Missing values: None</code></pre>
 </div>
-<div class="cell-output cell-output-display" data-execution_count="3">
+<div class="cell-output cell-output-display" data-execution_count="13">
 <div>
 
 
@@ -308,32 +341,44 @@ Missing values: None</code></pre>
 </div>
 </div>
 </div>
-<section id="part-1-text-mining" class="level2">
-<h2 class="anchored" data-anchor-id="part-1-text-mining">part 1: text mining</h2>
-<div id="375d648f" class="cell" data-execution_count="10">
+</section>
+<section id="part-1.-text-mining-word-cloud-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="part-1.-text-mining-word-cloud-analysis">Part 1. Text Mining &amp; Word Cloud Analysis</h2>
+<p>To capture the qualitative context of the student population, we aggregated multiple categorical variables - including parental jobs (Mjob, Fjob), reasons for school choice (reason), guardianship (guardian), and selected support/activity indicators (for example, schoolsup and activities when present) - into a single tokenized text corpus. Each observation contributes tokens of the form column_value (ex: reason_course, guardian_mother), and we then generated a Word Cloud from this aggregated token list to visualize the most frequent labels.</p>
+<div id="375d648f" class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># verify columns exist in the dataframe to avoid errors</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>possible_cols <span class="op">=</span> [<span class="st">'Mjob'</span>, <span class="st">'Fjob'</span>, <span class="st">'reason'</span>, <span class="st">'guardian'</span>, <span class="st">'schoolsup'</span>, <span class="st">'activities'</span>]</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>text_cols <span class="op">=</span> [c <span class="cf">for</span> c <span class="kw">in</span> possible_cols <span class="cf">if</span> c <span class="kw">in</span> df.columns]</span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="co"># We convert to string first to ensure no errors with non-text data</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>text_data <span class="op">=</span> <span class="st">" "</span>.join(</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    df[text_cols]</span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    .astype(<span class="bu">str</span>)</span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    .<span class="bu">apply</span>(<span class="kw">lambda</span> row: <span class="st">" "</span>.join(row.values), axis<span class="op">=</span><span class="dv">1</span>)</span>
-<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    .tolist()</span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate  Word Cloud</span></span>
-<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>wordcloud <span class="op">=</span> WordCloud(width<span class="op">=</span><span class="dv">900</span>, height<span class="op">=</span><span class="dv">450</span>, background_color<span class="op">=</span><span class="st">"white"</span>, colormap<span class="op">=</span><span class="st">'viridis'</span>).generate(text_data)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="bu">len</span>(text_cols) <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">ValueError</span>(<span class="st">"No valid text columns found in the dataframe."</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># We convert to string first to ensure no errors with non-text data</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>text_data <span class="op">=</span> <span class="st">" "</span>.join(</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    df[text_cols]</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    .fillna(<span class="st">""</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    .astype(<span class="bu">str</span>)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    .<span class="bu">apply</span>(<span class="kw">lambda</span> row: <span class="st">" "</span>.join([<span class="ss">f"</span><span class="sc">{</span>col<span class="sc">}</span><span class="ss">_</span><span class="sc">{</span>row[col]<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> col <span class="kw">in</span> text_cols]), axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    .tolist()</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>).lower()</span>
 <span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># plot and save graphs</span></span>
-<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">6</span>))</span>
-<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>plt.imshow(wordcloud, interpolation<span class="op">=</span><span class="st">"bilinear"</span>)</span>
-<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>plt.axis(<span class="st">"off"</span>)</span>
-<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Word Cloud: Student Background Themes"</span>, fontsize<span class="op">=</span><span class="dv">16</span>)</span>
-<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
-<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/word_cloud.png"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>, dpi<span class="op">=</span><span class="dv">200</span>)</span>
-<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate  Word Cloud</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>wordcloud <span class="op">=</span> WordCloud(</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    width<span class="op">=</span><span class="dv">900</span>,</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">450</span>,</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>    background_color<span class="op">=</span><span class="st">"white"</span>,</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>    colormap<span class="op">=</span><span class="st">"viridis"</span>,</span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>    collocations<span class="op">=</span><span class="va">False</span>,</span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>    max_words<span class="op">=</span><span class="dv">100</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>).generate(text_data)</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a><span class="co"># plot and save graphs</span></span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">12</span>, <span class="dv">6</span>))</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>plt.imshow(wordcloud, interpolation<span class="op">=</span><span class="st">"bilinear"</span>)</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>plt.axis(<span class="st">"off"</span>)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Word Cloud: Student Background Themes"</span>, fontsize<span class="op">=</span><span class="dv">16</span>)</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/word_cloud.png"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>, dpi<span class="op">=</span><span class="dv">200</span>)</span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
@@ -343,8 +388,10 @@ Missing values: None</code></pre>
 </div>
 </div>
 </section>
-<section id="part-2-neural-networks" class="level2">
-<h2 class="anchored" data-anchor-id="part-2-neural-networks">part 2: neural networks</h2>
+<section id="part-2-neural-network-vs.-decision-tree-classification" class="level2">
+<h2 class="anchored" data-anchor-id="part-2-neural-network-vs.-decision-tree-classification">Part 2: Neural Network vs.&nbsp;Decision Tree (Classification)</h2>
+<p>We formulated a binary classification task to predict student success, defining the target variable passed as 1 if the final grade (G3) is 10 or higher and 0 otherwise. To prevent data leakage, we excluded the intermediate grades (G1 and G2) from the feature set, since they directly encode prior academic performance and would inflate predictive performance. Prior to modeling, numeric features were standardized and categorical features were one-hot encoded to support neural network convergence and ensure a fair comparison across models.</p>
+<p>We compare a Multi-Layer Perceptron (MLP) classifier - a feedforward neural network with two hidden layers (64 and 32 units), ReLU activation, and early stopping - against a baseline decision tree capped at a maximum depth of 5. The depth-limited tree provides an interpretable benchmark, while the MLP tests whether non-linear structure and feature interactions improve pass/fail prediction.</p>
 <div id="8138b948" class="cell" data-execution_count="15">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create Binary Target (Pass = G3 &gt;= 10)</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'passed'</span>] <span class="op">=</span> (df[<span class="st">'G3'</span>] <span class="op">&gt;=</span> <span class="dv">10</span>).astype(<span class="bu">int</span>)</span>
@@ -400,6 +447,77 @@ Missing values: None</code></pre>
 Decision Tree Accuracy:  0.7538</code></pre>
 </div>
 </div>
+</section>
+<section id="part-3-training-dynamics-and-loss-curve" class="level2">
+<h2 class="anchored" data-anchor-id="part-3-training-dynamics-and-loss-curve">Part 3: Training Dynamics and Loss Curve</h2>
+<p>To monitor the stability of the neural network and detect potential overfitting, we tracked log loss across 60 training epochs using a held-out validation split carved from the training data. Because accuracy alone can obscure training dynamics, log loss provides a more sensitive view of whether predicted probabilities are improving in a calibrated way over time.</p>
+<p>The gap between the curves is crucial - if training loss continues to decrease while validation loss plateaus or increases, that pattern is consistent with overfitting. If both losses decrease together and remain close, it suggests the model is learning patterns that transfer beyond the training data.</p>
+<div id="00693ef1" class="cell" data-execution_count="16">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Split train into train/validation to keep test clean</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>X_tr_scaled, X_val_scaled, y_tr, y_val <span class="op">=</span> train_test_split(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    X_train_scaled, y_train, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y_train</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Neural Network with Loss Tracking</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>mlp <span class="op">=</span> MLPClassifier(</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    hidden_layer_sizes<span class="op">=</span>(<span class="dv">64</span>, <span class="dv">32</span>),</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    activation<span class="op">=</span><span class="st">"relu"</span>,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    solver<span class="op">=</span><span class="st">"adam"</span>,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    alpha<span class="op">=</span><span class="fl">1e-4</span>,</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    learning_rate_init<span class="op">=</span><span class="fl">1e-3</span>,</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    max_iter<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    warm_start<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    random_state<span class="op">=</span><span class="dv">42</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Loop</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>train_losses, val_losses <span class="op">=</span> [], []</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>epochs <span class="op">=</span> <span class="dv">60</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>classes <span class="op">=</span> np.unique(y_tr)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> e <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    mlp.partial_fit(X_tr_scaled, y_tr, classes<span class="op">=</span>classes)</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    p_train <span class="op">=</span> mlp.predict_proba(X_tr_scaled)</span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    p_val   <span class="op">=</span> mlp.predict_proba(X_val_scaled)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    train_losses.append(log_loss(y_tr, p_train))</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    val_losses.append(log_loss(y_val, p_val))</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Loss Curves</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="dv">5</span>))</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>plt.plot(train_losses, label<span class="op">=</span><span class="st">"Training Loss"</span>)</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>plt.plot(val_losses, label<span class="op">=</span><span class="st">"Validation Loss"</span>, linestyle<span class="op">=</span><span class="st">"--"</span>)</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Epoch"</span>)</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Log Loss"</span>)</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Neural Network: Training vs. Validation Loss"</span>)</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>plt.legend()</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>plt.grid(<span class="va">True</span>)</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/nn_loss_curve.png"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="3_neural_networks_text_mining_files/figure-html/cell-6-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="discussion-and-findings-to-be-made-into-proper-report" class="level2">
+<h2 class="anchored" data-anchor-id="discussion-and-findings-to-be-made-into-proper-report">4. Discussion and Findings (to be made into proper report)</h2>
+<section id="qualitative-insights-from-text-mining" class="level3">
+<h3 class="anchored" data-anchor-id="qualitative-insights-from-text-mining">Qualitative insights from text mining</h3>
+<p>The word cloud is dominated by tokens related to school choice (for example, <code>reason_course</code> and <code>reason_reputation</code>), family structure and guardianship (for example, <code>guardian_mother</code>), and common parental job categories (for example, <code>Mjob_services</code>, <code>Fjob_teacher</code>). This reflects the fact that a relatively small set of coded background levels appears repeatedly in the selected columns. Because the corpus is constructed from <code>column_value</code> tokens, these results should be interpreted as <strong>most frequent categorical levels</strong> rather than deeper natural-language themes. Still, the visualization provides a useful descriptive snapshot of prevalent student background attributes in this dataset.</p>
+</section>
+<section id="model-performance-and-value" class="level3">
+<h3 class="anchored" data-anchor-id="model-performance-and-value">Model performance and value</h3>
+<p>On the held-out test set, the neural network achieved an accuracy of <strong>0.8462</strong>, outperforming the depth-limited decision tree baseline (<strong>0.7538</strong>), an absolute improvement of about <strong>+0.09</strong>. This gap suggests that non-linear combinations of predictors may be informative for pass/fail prediction. However, the loss curve provides an important caveat: validation loss flattened after the early epochs while training loss continued to decrease, which is consistent with diminishing returns and increasing overfitting risk as the model continues to fit the training set more closely.</p>
+</section>
+<section id="conclusion" class="level3">
+<h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
+<p>Overall, the neural network captures structure that a shallow decision tree misses in this split, but the added complexity must be weighed against interpretability and robustness. In this dataset (<span class="math inline">\(n = 649\)</span>), neural networks can be sensitive to tuning choices and may overfit without careful regularization and validation. In educational settings where transparency matters, interpretable approaches such as decision trees or logistic regression remain attractive alternatives, offering clearer diagnostics and stakeholder-friendly reasoning while often remaining competitive in performance.</p>
+</section>
 </section>
 
 </main>
