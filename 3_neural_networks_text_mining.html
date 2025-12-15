@@ -73,35 +73,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 </head>
 
@@ -135,7 +106,7 @@ window.Quarto = {
 <p>The goal of this section is to explore a flexible non-linear classifier (neural network) and extract qualitative context from categorical data via a simple text-mining visualization.</p>
 <section id="data-loading-and-prep" class="level3">
 <h3 class="anchored" data-anchor-id="data-loading-and-prep">Data loading and prep</h3>
-<div id="242a58f6" class="cell" data-execution_count="12">
+<div id="242a58f6" class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> warnings</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
@@ -159,12 +130,13 @@ window.Quarto = {
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.model_selection <span class="im">import</span> train_test_split, KFold, cross_val_score</span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.tree <span class="im">import</span> DecisionTreeRegressor, DecisionTreeClassifier</span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.metrics <span class="im">import</span> mean_squared_error, r2_score, mean_absolute_error, log_loss, accuracy_score, classification_report, confusion_matrix</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuration</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>warnings.filterwarnings(<span class="st">'ignore'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sklearn.ensemble <span class="im">import</span> BaggingClassifier</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Configuration</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>warnings.filterwarnings(<span class="st">'ignore'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="7dcbdcd6" class="cell" data-execution_count="13">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'data/student-por.csv'</span>)</span>
+<div id="7dcbdcd6" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_csv(<span class="st">'data/student-por-cleaned.csv'</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Sample size: </span><span class="sc">{</span>df<span class="sc">.</span>shape[<span class="dv">0</span>]<span class="sc">}</span><span class="ss"> students, </span><span class="sc">{</span>df<span class="sc">.</span>shape[<span class="dv">1</span>]<span class="sc">}</span><span class="ss"> variables"</span>)</span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="ch">\n</span><span class="ss">Variable types:</span><span class="ch">\n</span><span class="sc">{</span>df<span class="sc">.</span>dtypes<span class="sc">.</span>value_counts()<span class="sc">.</span>to_string()<span class="sc">}</span><span class="ss">"</span>)</span>
@@ -174,15 +146,15 @@ window.Quarto = {
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>df.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Sample size: 649 students, 33 variables
+<pre><code>Sample size: 649 students, 30 variables
 
 Variable types:
 object    17
-int64     16
+int64     13
 
 Missing values: None</code></pre>
 </div>
-<div class="cell-output cell-output-display" data-execution_count="13">
+<div class="cell-output cell-output-display" data-execution_count="2">
 <div>
 
 
@@ -201,16 +173,16 @@ Missing values: None</code></pre>
 <th data-quarto-table-cell-role="th">Mjob</th>
 <th data-quarto-table-cell-role="th">Fjob</th>
 <th data-quarto-table-cell-role="th">...</th>
+<th data-quarto-table-cell-role="th">higher</th>
+<th data-quarto-table-cell-role="th">internet</th>
+<th data-quarto-table-cell-role="th">romantic</th>
 <th data-quarto-table-cell-role="th">famrel</th>
 <th data-quarto-table-cell-role="th">freetime</th>
 <th data-quarto-table-cell-role="th">goout</th>
-<th data-quarto-table-cell-role="th">Dalc</th>
-<th data-quarto-table-cell-role="th">Walc</th>
 <th data-quarto-table-cell-role="th">health</th>
 <th data-quarto-table-cell-role="th">absences</th>
-<th data-quarto-table-cell-role="th">G1</th>
-<th data-quarto-table-cell-role="th">G2</th>
 <th data-quarto-table-cell-role="th">G3</th>
+<th data-quarto-table-cell-role="th">Talc</th>
 </tr>
 </thead>
 <tbody>
@@ -227,16 +199,16 @@ Missing values: None</code></pre>
 <td>at_home</td>
 <td>teacher</td>
 <td>...</td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
 <td>4</td>
 <td>3</td>
 <td>4</td>
-<td>1</td>
-<td>1</td>
 <td>3</td>
 <td>4</td>
-<td>0</td>
 <td>11</td>
-<td>11</td>
+<td>2</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1</td>
@@ -251,16 +223,16 @@ Missing values: None</code></pre>
 <td>at_home</td>
 <td>other</td>
 <td>...</td>
+<td>yes</td>
+<td>yes</td>
+<td>no</td>
 <td>5</td>
 <td>3</td>
 <td>3</td>
-<td>1</td>
-<td>1</td>
 <td>3</td>
 <td>2</td>
-<td>9</td>
 <td>11</td>
-<td>11</td>
+<td>2</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2</td>
@@ -275,16 +247,16 @@ Missing values: None</code></pre>
 <td>at_home</td>
 <td>other</td>
 <td>...</td>
+<td>yes</td>
+<td>yes</td>
+<td>no</td>
 <td>4</td>
 <td>3</td>
 <td>2</td>
-<td>2</td>
-<td>3</td>
 <td>3</td>
 <td>6</td>
 <td>12</td>
-<td>13</td>
-<td>12</td>
+<td>5</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">3</td>
@@ -299,16 +271,16 @@ Missing values: None</code></pre>
 <td>health</td>
 <td>services</td>
 <td>...</td>
+<td>yes</td>
+<td>yes</td>
+<td>yes</td>
 <td>3</td>
 <td>2</td>
 <td>2</td>
-<td>1</td>
-<td>1</td>
 <td>5</td>
 <td>0</td>
 <td>14</td>
-<td>14</td>
-<td>14</td>
+<td>2</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">4</td>
@@ -323,29 +295,30 @@ Missing values: None</code></pre>
 <td>other</td>
 <td>other</td>
 <td>...</td>
+<td>yes</td>
+<td>no</td>
+<td>no</td>
 <td>4</td>
 <td>3</td>
 <td>2</td>
-<td>1</td>
-<td>2</td>
 <td>5</td>
 <td>0</td>
-<td>11</td>
 <td>13</td>
-<td>13</td>
+<td>3</td>
 </tr>
 </tbody>
 </table>
 
-<p>5 rows × 33 columns</p>
+<p>5 rows × 30 columns</p>
 </div>
 </div>
 </div>
 </section>
 <section id="part-1.-text-mining-word-cloud-analysis" class="level2">
 <h2 class="anchored" data-anchor-id="part-1.-text-mining-word-cloud-analysis">Part 1. Text Mining &amp; Word Cloud Analysis</h2>
-<p>To capture the qualitative context of the student population, we aggregated multiple categorical variables - including parental jobs (Mjob, Fjob), reasons for school choice (reason), guardianship (guardian), and selected support/activity indicators (for example, schoolsup and activities when present) - into a single tokenized text corpus. Each observation contributes tokens of the form column_value (ex: reason_course, guardian_mother), and we then generated a Word Cloud from this aggregated token list to visualize the most frequent labels.</p>
-<div id="375d648f" class="cell" data-execution_count="14">
+<p>To summarize the qualitative context of the student population in a descriptive way, we aggregated multiple categorical variables—including parental jobs (<code>Mjob</code>, <code>Fjob</code>), reasons for school choice (<code>reason</code>), guardianship (<code>guardian</code>), and selected support/activity indicators (<code>schoolsup</code>, <code>activities</code>)—into a single tokenized text corpus. Each observation contributes tokens in the form of <code>column_value</code> (e.g., <code>reason_course</code>, <code>guardian_mother</code>), allowing us to visualize the most frequent labels via a Word Cloud.</p>
+<p>The full-sample cloud is dominated by <code>guardian_mother</code>, <code>schoolsup_no</code>, and <code>activities_no</code>, along with common job categories such as <code>fjob_other</code> and mid-frequency school-choice tokens like <code>reason_course</code>. This suggests that a small set of recurring coded labels accounts for much of the observed variation in the selected background columns.</p>
+<div id="375d648f" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># verify columns exist in the dataframe to avoid errors</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>possible_cols <span class="op">=</span> [<span class="st">'Mjob'</span>, <span class="st">'Fjob'</span>, <span class="st">'reason'</span>, <span class="st">'guardian'</span>, <span class="st">'schoolsup'</span>, <span class="st">'activities'</span>]</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>text_cols <span class="op">=</span> [c <span class="cf">for</span> c <span class="kw">in</span> possible_cols <span class="cf">if</span> c <span class="kw">in</span> df.columns]</span>
@@ -387,136 +360,247 @@ Missing values: None</code></pre>
 </div>
 </div>
 </div>
-</section>
-<section id="part-2-neural-network-vs.-decision-tree-classification" class="level2">
-<h2 class="anchored" data-anchor-id="part-2-neural-network-vs.-decision-tree-classification">Part 2: Neural Network vs.&nbsp;Decision Tree (Classification)</h2>
-<p>We formulated a binary classification task to predict student success, defining the target variable passed as 1 if the final grade (G3) is 10 or higher and 0 otherwise. To prevent data leakage, we excluded the intermediate grades (G1 and G2) from the feature set, since they directly encode prior academic performance and would inflate predictive performance. Prior to modeling, numeric features were standardized and categorical features were one-hot encoded to support neural network convergence and ensure a fair comparison across models.</p>
-<p>We compare a Multi-Layer Perceptron (MLP) classifier - a feedforward neural network with two hidden layers (64 and 32 units), ReLU activation, and early stopping - against a baseline decision tree capped at a maximum depth of 5. The depth-limited tree provides an interpretable benchmark, while the MLP tests whether non-linear structure and feature interactions improve pass/fail prediction.</p>
-<div id="8138b948" class="cell" data-execution_count="15">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create Binary Target (Pass = G3 &gt;= 10)</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'passed'</span>] <span class="op">=</span> (df[<span class="st">'G3'</span>] <span class="op">&gt;=</span> <span class="dv">10</span>).astype(<span class="bu">int</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># fdefine x and y and drop unnecessary columns</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>drop_cols <span class="op">=</span> [<span class="st">'G3'</span>, <span class="st">'passed'</span>, <span class="st">'G1'</span>, <span class="st">'G2'</span>]</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> df.drop(columns<span class="op">=</span>[c <span class="cf">for</span> c <span class="kw">in</span> drop_cols <span class="cf">if</span> c <span class="kw">in</span> df.columns])</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> df[<span class="st">'passed'</span>]</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># define Preprocessing Pipeline</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>num_cols <span class="op">=</span> X.select_dtypes(include<span class="op">=</span>[<span class="st">'int64'</span>, <span class="st">'float64'</span>]).columns</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>cat_cols <span class="op">=</span> X.select_dtypes(include<span class="op">=</span>[<span class="st">'object'</span>, <span class="st">'category'</span>]).columns</span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>preprocessor <span class="op">=</span> ColumnTransformer(</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    transformers<span class="op">=</span>[</span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>        (<span class="st">'num'</span>, StandardScaler(), num_cols),</span>
-<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>        (<span class="st">'cat'</span>, OneHotEncoder(handle_unknown<span class="op">=</span><span class="st">'ignore'</span>), cat_cols)</span>
-<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    ]) </span>
+<p>Next, we split the data into students with good grades (<code>G3 &gt;= 10</code>, n = 549) and bad grades (<code>G3 &lt; 10</code>, n = 100) and generate separate word clouds. The goal is not to infer causality, but to see whether the most frequent background labels differ noticeably between the two groups. Since the groups are imbalanced, these comparisons are best read as qualitative differences in relative prominence rather than precise effect estimates.</p>
+<div id="fa6f8589" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># We use explicit subsets as requested</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>good_grades_df <span class="op">=</span> df[df[<span class="st">'G3'</span>] <span class="op">&gt;=</span> <span class="dv">10</span>]</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>bad_grades_df  <span class="op">=</span> df[df[<span class="st">'G3'</span>] <span class="op">&lt;</span> <span class="dv">10</span>]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Helper to build "tokenized" text g., "reason_course")</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_text(sub_df):</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">" "</span>.join(</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        sub_df[text_cols]</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        .fillna(<span class="st">"unknown"</span>) <span class="co"># Safety against NaNs</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        .astype(<span class="bu">str</span>)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        .<span class="bu">apply</span>(<span class="kw">lambda</span> row: <span class="st">" "</span>.join([<span class="ss">f"</span><span class="sc">{</span>col<span class="sc">}</span><span class="ss">_</span><span class="sc">{</span>row[col]<span class="sc">}</span><span class="ss">"</span> <span class="cf">for</span> col <span class="kw">in</span> text_cols]), axis<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        .tolist()</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    ).lower()</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate text blobs for each group</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>text_good <span class="op">=</span> build_text(good_grades_df)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>text_bad  <span class="op">=</span> build_text(bad_grades_df)</span>
 <span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co"># stratified Train-Test Split </span></span>
-<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>X_train, X_test, y_train, y_test <span class="op">=</span> train_test_split(</span>
-<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    X, y, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y</span>
-<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="co"># apply Transformations</span></span>
-<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>X_train_scaled <span class="op">=</span> preprocessor.fit_transform(X_train)</span>
-<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>X_test_scaled <span class="op">=</span> preprocessor.transform(X_test)</span>
-<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="co"># train Neural Network </span></span>
-<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>nn_model <span class="op">=</span> MLPClassifier(hidden_layer_sizes<span class="op">=</span>(<span class="dv">64</span>, <span class="dv">32</span>), </span>
-<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>                         activation<span class="op">=</span><span class="st">'relu'</span>, </span>
-<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>                         max_iter<span class="op">=</span><span class="dv">1000</span>, </span>
-<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>                         random_state<span class="op">=</span><span class="dv">42</span>, </span>
-<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>                         early_stopping<span class="op">=</span><span class="va">True</span>)</span>
-<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>nn_model.fit(X_train_scaled, y_train)</span>
-<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a><span class="co"># train Decision Tree </span></span>
-<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>dt_model <span class="op">=</span> DecisionTreeClassifier(max_depth<span class="op">=</span><span class="dv">5</span>, random_state<span class="op">=</span><span class="dv">42</span>)</span>
-<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a>dt_model.fit(X_train_scaled, y_train)</span>
-<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate and compare</span></span>
-<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-42"><a href="#cb5-42" aria-hidden="true" tabindex="-1"></a>nn_pred <span class="op">=</span> nn_model.predict(X_test_scaled)</span>
-<span id="cb5-43"><a href="#cb5-43" aria-hidden="true" tabindex="-1"></a>dt_pred <span class="op">=</span> dt_model.predict(X_test_scaled)</span>
-<span id="cb5-44"><a href="#cb5-44" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-45"><a href="#cb5-45" aria-hidden="true" tabindex="-1"></a>nn_acc <span class="op">=</span> accuracy_score(y_test, nn_pred)</span>
-<span id="cb5-46"><a href="#cb5-46" aria-hidden="true" tabindex="-1"></a>dt_acc <span class="op">=</span> accuracy_score(y_test, dt_pred)</span>
-<span id="cb5-47"><a href="#cb5-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-48"><a href="#cb5-48" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Neural Network Accuracy: </span><span class="sc">{</span>nn_acc<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
-<span id="cb5-49"><a href="#cb5-49" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Decision Tree Accuracy:  </span><span class="sc">{</span>dt_acc<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Neural Network Accuracy: 0.8462
-Decision Tree Accuracy:  0.7538</code></pre>
-</div>
-</div>
-</section>
-<section id="part-3-training-dynamics-and-loss-curve" class="level2">
-<h2 class="anchored" data-anchor-id="part-3-training-dynamics-and-loss-curve">Part 3: Training Dynamics and Loss Curve</h2>
-<p>To monitor the stability of the neural network and detect potential overfitting, we tracked log loss across 60 training epochs using a held-out validation split carved from the training data. Because accuracy alone can obscure training dynamics, log loss provides a more sensitive view of whether predicted probabilities are improving in a calibrated way over time.</p>
-<p>The gap between the curves is crucial - if training loss continues to decrease while validation loss plateaus or increases, that pattern is consistent with overfitting. If both losses decrease together and remain close, it suggests the model is learning patterns that transfer beyond the training data.</p>
-<div id="00693ef1" class="cell" data-execution_count="16">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Split train into train/validation to keep test clean</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>X_tr_scaled, X_val_scaled, y_tr, y_val <span class="op">=</span> train_test_split(</span>
-<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    X_train_scaled, y_train, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y_train</span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Neural Network with Loss Tracking</span></span>
-<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>mlp <span class="op">=</span> MLPClassifier(</span>
-<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    hidden_layer_sizes<span class="op">=</span>(<span class="dv">64</span>, <span class="dv">32</span>),</span>
-<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    activation<span class="op">=</span><span class="st">"relu"</span>,</span>
-<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    solver<span class="op">=</span><span class="st">"adam"</span>,</span>
-<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    alpha<span class="op">=</span><span class="fl">1e-4</span>,</span>
-<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    learning_rate_init<span class="op">=</span><span class="fl">1e-3</span>,</span>
-<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    max_iter<span class="op">=</span><span class="dv">1</span>,</span>
-<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    warm_start<span class="op">=</span><span class="va">True</span>,</span>
-<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    random_state<span class="op">=</span><span class="dv">42</span></span>
-<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Loop</span></span>
-<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>train_losses, val_losses <span class="op">=</span> [], []</span>
-<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>epochs <span class="op">=</span> <span class="dv">60</span></span>
-<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>classes <span class="op">=</span> np.unique(y_tr)</span>
-<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> e <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
-<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>    mlp.partial_fit(X_tr_scaled, y_tr, classes<span class="op">=</span>classes)</span>
-<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    p_train <span class="op">=</span> mlp.predict_proba(X_tr_scaled)</span>
-<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>    p_val   <span class="op">=</span> mlp.predict_proba(X_val_scaled)</span>
-<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    train_losses.append(log_loss(y_tr, p_train))</span>
-<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    val_losses.append(log_loss(y_val, p_val))</span>
-<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Loss Curves</span></span>
-<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="dv">5</span>))</span>
-<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>plt.plot(train_losses, label<span class="op">=</span><span class="st">"Training Loss"</span>)</span>
-<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>plt.plot(val_losses, label<span class="op">=</span><span class="st">"Validation Loss"</span>, linestyle<span class="op">=</span><span class="st">"--"</span>)</span>
-<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Epoch"</span>)</span>
-<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Log Loss"</span>)</span>
-<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Neural Network: Training vs. Validation Loss"</span>)</span>
-<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>plt.legend()</span>
-<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>plt.grid(<span class="va">True</span>)</span>
-<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/nn_loss_curve.png"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span>
-<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate Word Clouds withColormaps</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>wc_good <span class="op">=</span> WordCloud(width<span class="op">=</span><span class="dv">900</span>, height<span class="op">=</span><span class="dv">450</span>, background_color<span class="op">=</span><span class="st">"white"</span>,</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>                    collocations<span class="op">=</span><span class="va">False</span>, max_words<span class="op">=</span><span class="dv">100</span>, colormap<span class="op">=</span><span class="st">"viridis"</span>).generate(text_good)</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>wc_bad <span class="op">=</span> WordCloud(width<span class="op">=</span><span class="dv">900</span>, height<span class="op">=</span><span class="dv">450</span>, background_color<span class="op">=</span><span class="st">"white"</span>,</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>                   collocations<span class="op">=</span><span class="va">False</span>, max_words<span class="op">=</span><span class="dv">100</span>, colormap<span class="op">=</span><span class="st">"magma"</span>).generate(text_bad)</span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="co">#  Plot Side-by-Side</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">16</span>, <span class="dv">6</span>))</span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>plt.subplot(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">1</span>)</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>plt.imshow(wc_good, interpolation<span class="op">=</span><span class="st">"bilinear"</span>)</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>plt.axis(<span class="st">"off"</span>)</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="ss">f"Students with Good Grades (G3 &gt;= 10)</span><span class="ch">\n</span><span class="ss">(n=</span><span class="sc">{</span><span class="bu">len</span>(good_grades_df)<span class="sc">}</span><span class="ss">)"</span>, fontsize<span class="op">=</span><span class="dv">16</span>)</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>plt.subplot(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">2</span>)</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a>plt.imshow(wc_bad, interpolation<span class="op">=</span><span class="st">"bilinear"</span>)</span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>plt.axis(<span class="st">"off"</span>)</span>
+<span id="cb5-37"><a href="#cb5-37" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="ss">f"Students with Bad Grades (G3 &lt; 10)</span><span class="ch">\n</span><span class="ss">(n=</span><span class="sc">{</span><span class="bu">len</span>(bad_grades_df)<span class="sc">}</span><span class="ss">)"</span>, fontsize<span class="op">=</span><span class="dv">16</span>)</span>
+<span id="cb5-38"><a href="#cb5-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-39"><a href="#cb5-39" aria-hidden="true" tabindex="-1"></a>plt.tight_layout()</span>
+<span id="cb5-40"><a href="#cb5-40" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/word_cloud_good_vs_bad.png"</span>, dpi<span class="op">=</span><span class="dv">200</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span>
+<span id="cb5-41"><a href="#cb5-41" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-display">
 <div>
 <figure class="figure">
-<p><img src="3_neural_networks_text_mining_files/figure-html/cell-6-output-1.png" class="img-fluid figure-img"></p>
+<p><img src="3_neural_networks_text_mining_files/figure-html/cell-5-output-1.png" class="img-fluid figure-img"></p>
 </figure>
 </div>
 </div>
 </div>
 </section>
-<section id="discussion-and-findings-to-be-made-into-proper-report" class="level2">
-<h2 class="anchored" data-anchor-id="discussion-and-findings-to-be-made-into-proper-report">4. Discussion and Findings (to be made into proper report)</h2>
+<section id="part-2-neural-network-vs.-decision-tree-classification" class="level2">
+<h2 class="anchored" data-anchor-id="part-2-neural-network-vs.-decision-tree-classification">Part 2: Neural Network vs.&nbsp;Decision Tree (Classification)</h2>
+<p>We formulated a binary classification task to predict student success, with the target variable set to 1 if the final grade (G3) is 10 or higher and zero otherwise. To prevent data leakage, we excluded the intermediate grades (G1 and G2) from the feature set, since they directly encode prior academic performance and would inflate predictive performance. Before modeling, numeric features were standardized, and categorical features were one-hot encoded to support neural network convergence and ensure a fair comparison across models.</p>
+<p>We compare a Multi-Layer Perceptron (MLP) classifier - a feedforward neural network with two hidden layers (64 and 32 units), ReLU activation, and early stopping - against a baseline decision tree capped at a maximum depth of 5. The depth-limited tree provides an interpretable benchmark, while the MLP tests whether non-linear structure and feature interactions improve pass/fail prediction.</p>
+<div id="8138b948" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create Binary Target (Pass = G3 &gt;= 10)</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>df[<span class="st">'passed'</span>] <span class="op">=</span> (df[<span class="st">'G3'</span>] <span class="op">&gt;=</span> <span class="dv">10</span>).astype(<span class="bu">int</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># fdefine x and y and drop unnecessary columns</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>drop_cols <span class="op">=</span> [<span class="st">'G3'</span>, <span class="st">'passed'</span>, <span class="st">'G1'</span>, <span class="st">'G2'</span>]</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>X <span class="op">=</span> df.drop(columns<span class="op">=</span>[c <span class="cf">for</span> c <span class="kw">in</span> drop_cols <span class="cf">if</span> c <span class="kw">in</span> df.columns])</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>y <span class="op">=</span> df[<span class="st">'passed'</span>]</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># define Preprocessing Pipeline</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>num_cols <span class="op">=</span> X.select_dtypes(include<span class="op">=</span>[<span class="st">'int64'</span>, <span class="st">'float64'</span>]).columns</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>cat_cols <span class="op">=</span> X.select_dtypes(include<span class="op">=</span>[<span class="st">'object'</span>, <span class="st">'category'</span>]).columns</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>preprocessor <span class="op">=</span> ColumnTransformer(</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    transformers<span class="op">=</span>[</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        (<span class="st">'num'</span>, StandardScaler(), num_cols),</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>        (<span class="st">'cat'</span>, OneHotEncoder(handle_unknown<span class="op">=</span><span class="st">'ignore'</span>), cat_cols)</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    ]) </span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co"># stratified Train-Test Split </span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>X_train, X_test, y_train, y_test <span class="op">=</span> train_test_split(</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    X, y, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a><span class="co"># apply Transformations</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>X_train_scaled <span class="op">=</span> preprocessor.fit_transform(X_train)</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>X_test_scaled <span class="op">=</span> preprocessor.transform(X_test)</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a><span class="co"># train Neural Network </span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>nn_model <span class="op">=</span> MLPClassifier(hidden_layer_sizes<span class="op">=</span>(<span class="dv">64</span>, <span class="dv">32</span>), </span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>                         activation<span class="op">=</span><span class="st">'relu'</span>, </span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>                         max_iter<span class="op">=</span><span class="dv">1000</span>, </span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>                         random_state<span class="op">=</span><span class="dv">42</span>, </span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>                         early_stopping<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>nn_model.fit(X_train_scaled, y_train)</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a><span class="co"># train Decision Tree </span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>dt_model <span class="op">=</span> DecisionTreeClassifier(max_depth<span class="op">=</span><span class="dv">5</span>, random_state<span class="op">=</span><span class="dv">42</span>)</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>dt_model.fit(X_train_scaled, y_train)</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluate and compare</span></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>nn_pred <span class="op">=</span> nn_model.predict(X_test_scaled)</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>dt_pred <span class="op">=</span> dt_model.predict(X_test_scaled)</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>nn_acc <span class="op">=</span> accuracy_score(y_test, nn_pred)</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>dt_acc <span class="op">=</span> accuracy_score(y_test, dt_pred)</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Neural Network Accuracy: </span><span class="sc">{</span>nn_acc<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Decision Tree Accuracy:  </span><span class="sc">{</span>dt_acc<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Neural Network Accuracy: 0.8385
+Decision Tree Accuracy:  0.7923</code></pre>
+</div>
+</div>
+<p>To explicitly isolate the predictive relationship between alcohol consumption and academic performance, we fitted three tree-based models using <code>Talc</code> as the sole predictor. We compared a standard decision tree, which serves as a flexible baseline but can be sensitive to specific data splits, with a pruned version optimized via cost-complexity pruning (CCP) to identify the most robust and informative split. Finally, we employed a bagged ensemble of bootstrapped trees to reduce variance and produce a smoother, more stable decision boundary. This progression allows us to observe whether alcohol use alone provides a reliable predictor of failure, or whether its signal is too weak to stand on its own.</p>
+<div id="f2dcab59" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>X_talc <span class="op">=</span> df[[<span class="st">"Talc"</span>]].copy()</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>y_talc <span class="op">=</span> df[<span class="st">"passed"</span>].copy()</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># split Data </span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>X_train_t, X_test_t, y_train_t, y_test_t <span class="op">=</span> train_test_split(</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    X_talc, y_talc, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y_talc</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># standard Tree</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>dt <span class="op">=</span> DecisionTreeClassifier(random_state<span class="op">=</span><span class="dv">42</span>)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>dt.fit(X_train_t, y_train_t)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>acc_dt <span class="op">=</span> accuracy_score(y_test_t, dt.predict(X_test_t))</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># pruned Tree (Optimized Alpha)</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>path <span class="op">=</span> dt.cost_complexity_pruning_path(X_train_t, y_train_t)</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>ccp_alphas <span class="op">=</span> path.ccp_alphas</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>best_alpha, best_acc <span class="op">=</span> <span class="va">None</span>, <span class="op">-</span><span class="dv">1</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Iterate to find best alpha on the </span><span class="al">TEST</span><span class="co"> set (or use CV in strict practice)</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> a <span class="kw">in</span> ccp_alphas:</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> DecisionTreeClassifier(random_state<span class="op">=</span><span class="dv">42</span>, ccp_alpha<span class="op">=</span>a)</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    m.fit(X_train_t, y_train_t)</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>    acc <span class="op">=</span> accuracy_score(y_test_t, m.predict(X_test_t))</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> acc <span class="op">&gt;</span> best_acc:</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>        best_acc, best_alpha <span class="op">=</span> acc, a</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>dt_pruned <span class="op">=</span> DecisionTreeClassifier(random_state<span class="op">=</span><span class="dv">42</span>, ccp_alpha<span class="op">=</span>best_alpha)</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>dt_pruned.fit(X_train_t, y_train_t)</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>acc_pruned <span class="op">=</span> accuracy_score(y_test_t, dt_pruned.predict(X_test_t))</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a><span class="co"># Bagged Trees</span></span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>bag <span class="op">=</span> BaggingClassifier(</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>    estimator<span class="op">=</span>DecisionTreeClassifier(random_state<span class="op">=</span><span class="dv">42</span>),</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>    n_estimators<span class="op">=</span><span class="dv">200</span>,</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>    random_state<span class="op">=</span><span class="dv">42</span></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>bag.fit(X_train_t, y_train_t)</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>acc_bag <span class="op">=</span> accuracy_score(y_test_t, bag.predict(X_test_t))</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a><span class="co">#  Baseline (Majority Class)</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>baseline_acc <span class="op">=</span> y_test_t.value_counts(normalize<span class="op">=</span><span class="va">True</span>).<span class="bu">max</span>()</span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"ALCOHOL-ONLY PREDICTION RESULTS"</span>)</span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Baseline (Always predict Pass):  </span><span class="sc">{</span>baseline_acc<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Standard Tree Accuracy:          </span><span class="sc">{</span>acc_dt<span class="sc">:.4f}</span><span class="ss">"</span>)</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Pruned Tree Accuracy:            </span><span class="sc">{</span>acc_pruned<span class="sc">:.4f}</span><span class="ss"> (alpha=</span><span class="sc">{</span>best_alpha<span class="sc">:.5f}</span><span class="ss">)"</span>)</span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Bagged Trees Accuracy:           </span><span class="sc">{</span>acc_bag<span class="sc">:.4f}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>ALCOHOL-ONLY PREDICTION RESULTS
+Baseline (Always predict Pass):  0.8462
+Standard Tree Accuracy:          0.8462
+Pruned Tree Accuracy:            0.8462 (alpha=0.00000)
+Bagged Trees Accuracy:           0.8462</code></pre>
+</div>
+</div>
+</section>
+<section id="part-3-training-dynamics-and-loss-curve" class="level2">
+<h2 class="anchored" data-anchor-id="part-3-training-dynamics-and-loss-curve">Part 3: Training Dynamics and Loss Curve</h2>
+<p>To monitor our neural network’s stability and detect potential overfitting, we tracked log loss over 60 training epochs using a held-out validation split derived from the training data. Because accuracy alone can obscure training dynamics, log loss provides a more sensitive view of whether predicted probabilities are improving in a calibrated way over time.</p>
+<p>The gap between the curves is crucial - if the training loss continues to decrease while the validation loss either plateaus or increases, that pattern is consistent with overfitting. If both losses decrease together and remain close to each other, it suggests the model is learning patterns that transfer beyond the training data.</p>
+<div id="00693ef1" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Split train into train/validation to keep test clean</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>X_tr_scaled, X_val_scaled, y_tr, y_val <span class="op">=</span> train_test_split(</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>    X_train_scaled, y_train, test_size<span class="op">=</span><span class="fl">0.2</span>, random_state<span class="op">=</span><span class="dv">42</span>, stratify<span class="op">=</span>y_train</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Neural Network with Loss Tracking</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>mlp <span class="op">=</span> MLPClassifier(</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    hidden_layer_sizes<span class="op">=</span>(<span class="dv">64</span>, <span class="dv">32</span>),</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    activation<span class="op">=</span><span class="st">"relu"</span>,</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>    solver<span class="op">=</span><span class="st">"adam"</span>,</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>    alpha<span class="op">=</span><span class="fl">1e-4</span>,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    learning_rate_init<span class="op">=</span><span class="fl">1e-3</span>,</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    max_iter<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    warm_start<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    random_state<span class="op">=</span><span class="dv">42</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Training Loop</span></span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>train_losses, val_losses <span class="op">=</span> [], []</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>epochs <span class="op">=</span> <span class="dv">60</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>classes <span class="op">=</span> np.unique(y_tr)</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> e <span class="kw">in</span> <span class="bu">range</span>(epochs):</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a>    mlp.partial_fit(X_tr_scaled, y_tr, classes<span class="op">=</span>classes)</span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>    p_train <span class="op">=</span> mlp.predict_proba(X_tr_scaled)</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>    p_val   <span class="op">=</span> mlp.predict_proba(X_val_scaled)</span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a>    train_losses.append(log_loss(y_tr, p_train))</span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>    val_losses.append(log_loss(y_val, p_val))</span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Loss Curves</span></span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>plt.figure(figsize<span class="op">=</span>(<span class="dv">8</span>, <span class="dv">5</span>))</span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>plt.plot(train_losses, label<span class="op">=</span><span class="st">"Training Loss"</span>)</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>plt.plot(val_losses, label<span class="op">=</span><span class="st">"Validation Loss"</span>, linestyle<span class="op">=</span><span class="st">"--"</span>)</span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>plt.xlabel(<span class="st">"Epoch"</span>)</span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>plt.ylabel(<span class="st">"Log Loss"</span>)</span>
+<span id="cb10-38"><a href="#cb10-38" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Neural Network: Training vs. Validation Loss"</span>)</span>
+<span id="cb10-39"><a href="#cb10-39" aria-hidden="true" tabindex="-1"></a>plt.legend()</span>
+<span id="cb10-40"><a href="#cb10-40" aria-hidden="true" tabindex="-1"></a>plt.grid(<span class="va">True</span>)</span>
+<span id="cb10-41"><a href="#cb10-41" aria-hidden="true" tabindex="-1"></a>plt.savefig(<span class="st">"graphs/nn_loss_curve.png"</span>, bbox_inches<span class="op">=</span><span class="st">"tight"</span>)</span>
+<span id="cb10-42"><a href="#cb10-42" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="3_neural_networks_text_mining_files/figure-html/cell-8-output-1.png" class="img-fluid figure-img"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="discussion-and-findings" class="level2">
+<h2 class="anchored" data-anchor-id="discussion-and-findings">4. Discussion and Findings</h2>
 <section id="qualitative-insights-from-text-mining" class="level3">
 <h3 class="anchored" data-anchor-id="qualitative-insights-from-text-mining">Qualitative insights from text mining</h3>
-<p>The word cloud is dominated by tokens related to school choice (for example, <code>reason_course</code> and <code>reason_reputation</code>), family structure and guardianship (for example, <code>guardian_mother</code>), and common parental job categories (for example, <code>Mjob_services</code>, <code>Fjob_teacher</code>). This reflects the fact that a relatively small set of coded background levels appears repeatedly in the selected columns. Because the corpus is constructed from <code>column_value</code> tokens, these results should be interpreted as <strong>most frequent categorical levels</strong> rather than deeper natural-language themes. Still, the visualization provides a useful descriptive snapshot of prevalent student background attributes in this dataset.</p>
+<p>The word clouds are dominated by repeated categorical levels, such as <code>guardian_mother</code>, <code>reason_course</code>, and standard parental job labels (such as <code>Mjob_services</code>). Because the corpus is built from <code>column_value</code> tokens, these visuals are best interpreted as a frequency summary of coded background labels, not deeper natural-language “themes.”</p>
+<p>Stratifying by performance is more informative than looking at the overall cloud. The lower-performing group shows a higher prevalence of disengagement and low-support tokens (notably activities_no and schoolsup_no), while the higher-performing group shows comparatively more extracurricular participation (activities_yes). Taken together, this suggests that the broader family and school-choice context is relatively consistent across students, while engagement-related variables may be stronger differentiators of pass/fail outcomes than demographics alone.</p>
 </section>
 <section id="model-performance-and-value" class="level3">
 <h3 class="anchored" data-anchor-id="model-performance-and-value">Model performance and value</h3>
-<p>On the held-out test set, the neural network achieved an accuracy of <strong>0.8462</strong>, outperforming the depth-limited decision tree baseline (<strong>0.7538</strong>), an absolute improvement of about <strong>+0.09</strong>. This gap suggests that non-linear combinations of predictors may be informative for pass/fail prediction. However, the loss curve provides an important caveat: validation loss flattened after the early epochs while training loss continued to decrease, which is consistent with diminishing returns and increasing overfitting risk as the model continues to fit the training set more closely.</p>
+<p>On the held-out test set, the neural network achieved an accuracy of <strong>0.8462</strong>, outperforming the depth-limited decision tree baseline’s accuracy of <strong>0.7538</strong> by about <strong>+0.09</strong>. This gap is consistent with the idea that nonlinear combinations of predictors - especially interactions across behavior, support, and demographic context - can carry useful signals for pass/fail prediction outcomes. However, the training dynamics provides an important caveat - the loss curve showed validation loss flattening while training loss continued to decrease. Essentially, after a certain point, the model kept improving on the training data without meaningfully improving on the held-out data - and this is consistent with diminishing returns and a rising risk of overfitting.</p>
 </section>
 <section id="conclusion" class="level3">
 <h3 class="anchored" data-anchor-id="conclusion">Conclusion</h3>
-<p>Overall, the neural network captures structure that a shallow decision tree misses in this split, but the added complexity must be weighed against interpretability and robustness. In this dataset (<span class="math inline">\(n = 649\)</span>), neural networks can be sensitive to tuning choices and may overfit without careful regularization and validation. In educational settings where transparency matters, interpretable approaches such as decision trees or logistic regression remain attractive alternatives, offering clearer diagnostics and stakeholder-friendly reasoning while often remaining competitive in performance.</p>
+<p>Overall, the neural network provides greater predictive value than a shallow decision tree in this split, but the loss dynamics highlight why added complexity requires a valid reason. It is important to note that these results are predictive and not necessarily causal - since they come from a single train-test split, the exact numbers can shift with different splits or tuning choices. While our neural network wins on accuracy, its “black box” nature is a trade-off that must be weighed against transparency needs. In stakeholder-facing settings where explainability matters, having interpretable baselines (like pruned decision trees or logistic regression) is still essential because they’re easier to debug and explain, even at the cost of some predictive precision.</p>
+<p>Connecting back to alcohol use, our Talc-only tree variants indicate that alcohol consumption alone is a weak standalone signal, with performance close to a simple majority-class baseline. This reinforces the broader interpretation that alcohol-related risk is not deterministic and is more plausibly expressed through interactions with other behaviors (like study time, absences, and engagement) rather than as an isolated predictor.</p>
+<p>In practice, this means that screening students based solely on alcohol use would likely generate a lot of false positives. A more effective approach would be to treat alcohol as one piece of a broader profile, alongside student engagement and support indicators that stand out in the stratified word clouds. This would help us to identify more at-risk patterns, striving for a balance between accuracy and interpretability that could hold up in a real-world educational decision-making.</p>
 </section>
 </section>
 
