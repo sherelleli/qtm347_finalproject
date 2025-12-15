@@ -1,0 +1,28 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 2 Random Forest and XGBoost\n",
+    "In this section, we will use tree-based models, namely Random Forest and XGboost, to predict student test performance (G3). We will start with all predictors and then present a table showing the importance ranking. In the linear regression analysis, we treated student performance as a continuous variable. But since tree-based models are better-suited for categorical variables, we will create a categorical performance variable from the original variable G3.\n",
+    "\n",
+    "In Portugal, where our data is collected, universities uses a 0-20 grading scale, which can be translated to the US grading scale from A to F that is more familiar to readers. The table below shows the translation criteria.\n",
+    "\n",
+    "| Portugal Grade | US grade | \n",
+    "| :--- | :---: |\n",
+    "| 18 - 20 | A+ |\n",
+    "| 16 - 17.9 | A |\n",
+    "| 15 - 16.9 | A- |\n",
+    "| "
+   ]
+  }
+ ],
+ "metadata": {
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
