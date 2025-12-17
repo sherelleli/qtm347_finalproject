@@ -1,0 +1,495 @@
+---
+title: "Final Project Report"
+author: 
+  - "Anushka Basu"
+  - "Sherelle Li"
+  - "Yifeng Jin"
+date: "2025-12-17"
+format:
+  pdf:
+    template: article-template.latex
+    toc: true
+    number-sections: true
+    fontsize: 11pt
+    fig-width: 6
+    fig-height: 4
+    code-line-wrap: true
+    code-font-size: 6pt
+    include-in-header:
+      text: |
+        \usepackage{parskip}
+        \setlength{\parskip}{0.5em}
+  html:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{python}
+# Data Manipulation & Basic Operations
+import pandas as pd
+import numpy as np
+
+# Visualization (EDA)
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Preprocessing
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+
+# Train-Test Split & Cross Validation
+from sklearn.model_selection import train_test_split, KFold, cross_val_score
+
+# PCA
+from sklearn.decomposition import PCA
+
+# Regression Models (sklearn)
+from sklearn.linear_model import (
+    LinearRegression, 
+    Lasso, LassoCV,
+    Ridge, RidgeCV,
+    ElasticNet, ElasticNetCV
+)
+
+# Regression Models & Robust Standard Errors (statsmodels)
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+
+# Evaluation Metrics
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+# Suppress warnings
+import warnings
+warnings.filterwarnings('ignore')
+```
+
+
+# 1 Introduction & Executive Summary 
+
+## Introduction
+
+Alcohol consumption is a common feature of adolescent and young adult social life, and a substantial body of research has examined its relationship with academic outcomes. Prior studies consistently find that higher levels of alcohol use are associated with lower grades, increased absenteeism, and reduced academic engagement, though the magnitude of these effects varies once background and behavioral factors are taken into account. For example, DeSimone (2010) finds that binge drinking is linked to lower GPA after controlling for student characteristics, while Wolaver (2002) shows that alcohol use is strongly related to missed classes, which in turn affects academic performance ([DeSimone, 2010](https://doi.org/10.1016/j.jhealeco.2009.11.001); [Wolaver, 2002](https://www.jstor.org/stable/3083345)).
+
+At the same time, alcohol consumption often co-occurs with other factors—such as prior academic performance, study habits, family background, and peer socialization—that are themselves strong predictors of grades. This raises an important question: does alcohol consumption have an independent relationship with academic performance, or does its apparent effect largely reflect underlying differences in behavior and context?
+
+This question is also personally relevant. Drinking as part of party and social culture is prevalent on many college campuses, including our own university, making it especially interesting to examine whether patterns observed in prior research are already evident earlier in students’ academic trajectories. Motivated by both the literature and lived experience, this project asks: **How does student alcohol consumption relate to academic performance, and does it meaningfully contribute to predicting final grades beyond prior academic performance and other behavioral and family factors?**
+
+(executive summary missing, need to have everyone finish their part first)
+
+# 2 Data Description
+
+## Dataset Selection and Source
+This study uses the student performance dataset for the Portuguese language course (`student-por.csv`) from the UCI Machine Learning Repository. The Portuguese dataset was selected instead of the Mathematics course dataset because it contains a larger number of observations (n = 649 versus n = 395). The larger sample size improves statistical power and supports more stable estimation in multivariate regression and regularization-based models that rely on sufficient data density.
+
+Although the Mathematics and Portuguese datasets share a similar structure, they do not fully overlap in student enrollment. Combining them would require restricting the sample to students enrolled in both courses or implementing nontrivial imputation strategies for missing observations. Either approach would substantially reduce the effective sample size and complicate interpretation. For these reasons, the analysis focuses exclusively on the Portuguese dataset.
+
+## Outcome Variable
+The primary outcome variable is `G3`, the final course grade, measured on a standardized 0–20 scale. This variable captures cumulative academic performance at the end of the academic year and serves as the target for all predictive models. The focus on `G3` aligns with the research question of understanding how behavioral, social, and family factors relate to final academic outcomes rather than short-term performance.
+
+## Predictor Domains
+Rather than emphasizing individual preprocessing steps, predictors are conceptually organized into thematic domains that reflect different dimensions of student life and background:
+
+- **Alcohol Consumption:** Measures of student alcohol use, summarized through an overall indicator of drinking behavior.
+- **Academic Behavior:** Indicators related to study habits and academic history, including study time, absences, and prior failures.
+- **Demographics:** Basic student characteristics such as age, sex, school attended, and home location (urban vs. rural).
+- **Family Background:** Socioeconomic and household context, including parental education, parental occupations, family structure, and educational support at home.
+- **Social and Lifestyle Factors:** Variables capturing peer interaction, free time, extracurricular activities, health status, and romantic relationships.
+
+This domain-based organization clarifies how different types of predictors contribute to explaining variation in academic performance and helps structure the interpretation of later modeling results.
+
+## Modeling Readiness
+All variables were retained in formats appropriate for regression-based and machine-learning methods, with categorical predictors prepared for indicator-based encoding and ordinal variables preserved in their natural order for interpretability. The dataset is fully observed, internally consistent, and structured to support both explanatory modeling and out-of-sample prediction in later sections of the analysis.
+
+
+# 3 Data Cleaning and Preparation
+
+## Data Loading and Initial Inspection
+The analysis begins with the `student-por.csv` dataset from the UCI Machine Learning Repository, which contains 649 observations and 33 variables. This dataset was chosen over the mathematics course dataset because of its larger sample size, which provides greater statistical stability for downstream modeling, especially for regularized methods and train–test evaluation. An initial inspection confirmed that the dataset contains no missing values, eliminating the need for imputation at any stage :contentReference[oaicite:0]{index=0}.
+
+Basic sanity checks were conducted immediately after loading the data. Variable types were inspected to distinguish numeric and categorical predictors, and summary statistics were reviewed to ensure that all variables fell within their documented ranges. For example, grades (`G1`, `G2`, `G3`) were confirmed to lie between 0 and 20, alcohol consumption variables (`Dalc`, `Walc`) between 1 and 5, and age between 15 and 22. No impossible or out-of-range values were detected, indicating that the raw data were internally consistent.
+
+## Outcome Definition and Leakage Prevention
+The primary outcome variable is `G3`, the final Portuguese course grade. A key data-cleaning decision was the explicit removal of `G1` and `G2` (first- and second-period grades) from the predictor set. These variables represent earlier measurements of the same underlying academic outcome and are mechanically highly correlated with `G3`. Correlation checks confirmed this concern, with correlations exceeding 0.8 for `G1–G3` and 0.9 for `G2–G3`. Including them would introduce severe target leakage, allowing models to predict final grades using prior grades rather than behavioral, social, or family factors. Removing `G1` and `G2` ensures that the analysis focuses on the substantive research question rather than trivial grade persistence :contentReference[oaicite:1]{index=1}.
+```{python}
+df = pd.read_csv('data/student-por.csv')
+```
+```{python}
+grade_corr = df[['G1', 'G2', 'G3']].corr()
+
+fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+sns.heatmap(grade_corr, annot=True, cmap='Reds', vmin=0, vmax=1, 
+            fmt='.3f', ax=axes[0], square=True)
+axes[0].set_title('Grade Correlations')
+
+axes[1].scatter(df['G1'], df['G3'], alpha=0.5, edgecolor='none')
+axes[1].plot([0, 20], [0, 20], 'r--', lw=1)
+axes[1].set_xlabel('G1 (Period 1)')
+axes[1].set_ylabel('G3 (Final)')
+axes[1].set_title(f'G1 vs G3 (r = {df["G1"].corr(df["G3"]):.3f})')
+
+axes[2].scatter(df['G2'], df['G3'], alpha=0.5, edgecolor='none')
+axes[2].plot([0, 20], [0, 20], 'r--', lw=1)
+axes[2].set_xlabel('G2 (Period 2)')
+axes[2].set_ylabel('G3 (Final)')
+axes[2].set_title(f'G2 vs G3 (r = {df["G2"].corr(df["G3"]):.3f})')
+
+plt.tight_layout()
+plt.savefig('graphs/leakage_check.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+print(f"G1-G3 correlation: {df['G1'].corr(df['G3']):.3f}")
+print(f"G2-G3 correlation: {df['G2'].corr(df['G3']):.3f}")
+```
+
+## Variable Typing and Encoding Decisions
+All string-based variables were explicitly converted to categorical data types to reflect their qualitative nature and to prepare them for later encoding. Ordinal variables—such as `studytime`, `traveltime`, `Dalc`, `Walc`, `famrel`, `freetime`, `goout`, `health`, `Medu`, and `Fedu`—were intentionally kept as numeric rather than one-hot encoded. These variables have meaningful ordering, and treating them as numeric preserves interpretability of regression coefficients (e.g., moving from “low” to “high” consumption or education level).
+
+Binary indicators (e.g., `schoolsup`, `famsup`, `paid`, `internet`, `romantic`) were retained in their original yes/no structure and later handled through one-hot encoding at the modeling stage. At the cleaning stage, the emphasis was on preserving semantic meaning rather than prematurely expanding the feature space.
+
+## Feature Engineering: Total Alcohol Consumption
+The dataset includes two alcohol-related variables: weekday alcohol consumption (`Dalc`) and weekend alcohol consumption (`Walc`). Exploratory correlation analysis showed that these two measures are strongly correlated (r ≈ 0.62), reflecting consistent drinking patterns across weekdays and weekends. To address redundancy and improve interpretability, a new feature—`Talc` (total alcohol consumption)—was constructed as the sum of `Dalc` and `Walc`.
+
+This engineered variable provides a single, interpretable measure of overall alcohol use while reducing reliance on two highly overlapping predictors. Importantly, `Dalc` and `Walc` were not immediately dropped, allowing later comparisons between separate and aggregated alcohol measures during exploratory analysis and model selection :contentReference[oaicite:2]{index=2}.
+
+## Distribution Checks and Outlier Assessment
+Table X. Skewness of Numeric Variables in the Student Performance Dataset  
+(High skewness defined as |skew| > 1)
+
+| Variable   | Skewness | High Skewness |
+|------------|----------|---------------|
+| failures   | 3.09     | Yes           |
+| Dalc       | 2.14     | Yes           |
+| absences   | 2.02     | Yes           |
+| traveltime | 1.24     | Yes           |
+| Talc       | 1.18     | Yes           |
+| studytime  | 0.70     | No            |
+| Walc       | 0.63     | No            |
+| age        | 0.42     | No            |
+| Fedu       | 0.21     | No            |
+| goout      | -0.01    | No            |
+| Medu       | -0.03    | No            |
+| freetime   | -0.18    | No            |
+| health     | -0.50    | No            |
+| G3         | -0.91    | No            |
+| famrel    | -1.10    | Yes           |
+
+```{python}
+# Visualize distributions of key variables with potential outliers
+fig, axes = plt.subplots(2, 3, figsize=(14, 8))
+
+vars_to_check = ['absences', 'failures', 'Dalc', 'Walc', 'G3', 'age']
+
+for ax, var in zip(axes.flatten(), vars_to_check):
+    sns.histplot(df_model[var], kde=True, ax=ax)
+    ax.axvline(df_model[var].mean(), color='red', linestyle='--', label=f'Mean: {df_model[var].mean():.1f}')
+    ax.axvline(df_model[var].median(), color='green', linestyle='--', label=f'Median: {df_model[var].median():.1f}')
+    ax.set_title(f'{var} (skew: {skew(df_model[var]):.2f})')
+    ax.legend(fontsize=8)
+
+plt.tight_layout()
+plt.savefig('graphs/distributions.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+```{python}
+# Boxplots to identify outliers
+fig, axes = plt.subplots(1, 4, figsize=(14, 4))
+
+outlier_vars = ['absences', 'failures', 'Dalc', 'Walc']
+
+for ax, var in zip(axes, outlier_vars):
+    sns.boxplot(y=df_model[var], ax=ax)
+    ax.set_title(var)
+    
+    # Count outliers using IQR method
+    Q1, Q3 = df_model[var].quantile([0.25, 0.75])
+    IQR = Q3 - Q1
+    outliers = ((df_model[var] < Q1 - 1.5*IQR) | (df_model[var] > Q3 + 1.5*IQR)).sum()
+    ax.set_xlabel(f'Outliers: {outliers}')
+
+plt.tight_layout()
+plt.savefig('graphs/boxplots_outliers.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+Before modeling, distributions of all numeric predictors were examined using summary statistics, skewness measures, histograms, and boxplots. Several variables—such as `failures`, `absences`, and alcohol measures—exhibited strong right skew. These patterns reflect real behavioral phenomena (e.g., most students have zero failures or low alcohol consumption) rather than data errors.
+
+No transformations were applied despite skewness. This decision was deliberate: the variables are bounded, interpretable on their original scales, and later modeling approaches (robust standard errors and penalized regression) are well-suited to handling non-normal predictors. Outliers identified via interquartile range methods were retained, as they represent genuine student experiences rather than noise.
+
+```{python}
+# Numeric variables summary
+print("Numeric Variables:")
+df_model.describe().round(2)
+```
+```{python}
+# Categorical variables summary
+print("Categorical Variables:")
+df_model.describe(include=['category'])
+```
+
+## Final Cleaned Dataset
+After removing leakage variables and adding the engineered `Talc` feature, the final cleaned dataset contains 649 observations and 32 variables. The cleaned dataset was saved for reproducibility and downstream modeling. At this stage, the data are internally consistent, free of leakage, and structured to support both interpretability-focused regression and more flexible predictive methods :contentReference[oaicite:3]{index=3}.
+
+# 4 Exploratory Data Analysis (EDA)
+
+```{python}
+# Distributions of key variables
+fig, axes = plt.subplots(2, 3, figsize=(14, 8))
+
+eda_vars = ['G3', 'Dalc', 'Walc', 'absences', 'studytime', 'failures']
+
+for ax, var in zip(axes.flatten(), eda_vars):
+    sns.histplot(df_model[var], kde=True, ax=ax, color='steelblue')
+    ax.axvline(df_model[var].mean(), color='red', linestyle='--', label=f'Mean: {df_model[var].mean():.2f}')
+    ax.axvline(df_model[var].median(), color='orange', linestyle='--', label=f'Median: {df_model[var].median():.2f}')
+    ax.set_title(f'{var}')
+    ax.legend(fontsize=8)
+
+plt.suptitle('Distributions of Key Variables', fontsize=14, y=1.02)
+plt.tight_layout()
+plt.savefig('graphs/eda_distributions.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+
+## Outcome Distribution
+The final grade (`G3`) has a mean of approximately 11.9 (out of 20) and exhibits mild left skew, with most students scoring between 10 and 14. This distribution suggests meaningful variation in academic performance while avoiding extreme ceiling or floor effects, making it suitable for regression-based analysis.
+
+## Academic and Family Factors
+Exploratory correlations highlight that academic history variables are much more strongly associated with final grades than alcohol consumption. The number of past failures is the single strongest correlate of `G3`, showing a substantial negative association. Study time is positively related to grades, while absences show a weaker negative relationship.
+
+Family background variables, particularly parental education (`Medu` and `Fedu`), display moderate positive correlations with academic performance. These findings are consistent with socioeconomic explanations of educational outcomes and motivate their inclusion as controls in all subsequent models.
+
+## Social and Lifestyle Variables
+Social variables such as `goout` and `freetime` exhibit weak negative correlations with grades, suggesting that increased social activity may be associated with slightly lower academic performance. However, these relationships are small in magnitude and likely intertwined with alcohol use and other behaviors, reinforcing the need for multivariate modeling.
+
+## Alcohol Consumption Patterns
+```{python}
+# Relationship between alcohol variables and G3
+fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+
+# Dalc vs G3
+sns.boxplot(x='Dalc', y='G3', data=df_model, ax=axes[0])
+axes[0].set_title('Weekday Alcohol (Dalc) vs Final Grade')
+axes[0].set_xlabel('Dalc (1=very low, 5=very high)')
+
+# Walc vs G3
+sns.boxplot(x='Walc', y='G3', data=df_model, ax=axes[1])
+axes[1].set_title('Weekend Alcohol (Walc) vs Final Grade')
+axes[1].set_xlabel('Walc (1=very low, 5=very high)')
+
+# Total alcohol (Talc) vs G3 - use Talc which was created in data cleaning
+sns.regplot(x='Talc', y='G3', data=df_model, ax=axes[2], scatter_kws={'alpha':0.4})
+axes[2].set_title(f'Total Alcohol vs G3 (r = {df_model["Talc"].corr(df_model["G3"]):.3f})')
+axes[2].set_xlabel('Total Alcohol (Dalc + Walc)')
+
+plt.tight_layout()
+plt.savefig('graphs/alcohol_vs_grade.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+Alcohol consumption is generally low in the sample. Weekday drinking (`Dalc`) is highly right-skewed, with most students reporting the minimum level, while weekend drinking (`Walc`) shows greater dispersion but remains concentrated at lower values. The strong correlation between `Dalc` and `Walc` confirms that these variables capture a shared underlying behavior rather than independent dimensions of alcohol use.
+
+When examining alcohol variables against `G3`, all three measures (`Dalc`, `Walc`, and `Talc`) show weak but consistently negative correlations with final grades. Visualizations suggest a slight downward trend in grades as alcohol consumption increases, but the effect size is modest, indicating that alcohol use alone is unlikely to be a dominant predictor of academic performance.
+
+
+## Multicollinearity Assessment
+```{python}
+# Correlation matrix of numeric predictors with G3
+numeric_cols_for_corr = ['G3', 'Dalc', 'Walc', 'absences', 'studytime', 'failures', 
+                          'Medu', 'Fedu', 'famrel', 'goout', 'freetime', 'health', 'age', 'traveltime']
+
+corr_matrix = df_model[numeric_cols_for_corr].corr()
+
+plt.figure(figsize=(12, 10))
+mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)
+sns.heatmap(corr_matrix, annot=True, cmap='RdBu_r', center=0, fmt='.2f',
+            mask=mask, square=True, linewidths=0.5)
+plt.title('Correlation Matrix of Numeric Predictors with G3')
+plt.tight_layout()
+plt.savefig('graphs/correlation_matrix.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+
+```{python}
+# Correlation matrix among behavioral predictors
+behavioral_vars = ['Dalc', 'Walc', 'studytime', 'failures', 'absences', 
+                   'goout', 'freetime', 'famrel', 'health']
+
+behav_corr = df_model[behavioral_vars].corr()
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(behav_corr, annot=True, cmap='RdBu_r', center=0, fmt='.2f',
+            square=True, linewidths=0.5, vmin=-1, vmax=1)
+plt.title('Correlations Among Behavioral Predictors')
+plt.tight_layout()
+plt.savefig('graphs/behavioral_correlations.png', dpi=150, bbox_inches='tight')
+plt.show()
+```
+Correlation matrices among numeric predictors revealed notable clustering among behavioral variables, especially between `Dalc` and `Walc` and between parental education measures. Variance Inflation Factor (VIF) diagnostics showed that all VIF values were below conventional thresholds for severe multicollinearity, though alcohol variables had the highest values among predictors.
+
+These results indicate moderate redundancy but no immediate need to remove variables purely on multicollinearity grounds. Instead, they motivate the use of regularization techniques and, as an exploratory exercise, Principal Components Analysis to understand latent structure in the data.
+
+## EDA Takeaways
+Overall, EDA suggests that:
+- Alcohol consumption is negatively related to academic performance, but with small effect sizes.
+- Academic history and educational aspirations dominate as predictors of final grades.
+- Family socioeconomic indicators play a meaningful but secondary role.
+- Behavioral and social variables are interrelated, creating moderate redundancy that must be handled carefully in modeling.
+
+These insights directly inform the modeling strategy that follows, including the choice to compare baseline linear models, stepwise selection, and penalized regression approaches while carefully controlling for confounding factors :contentReference[oaicite:4]{index=4}.
+
+
+# 5 Methodology
+## 5.3 Random Forest
+After using linear regression to predict student grade as a continuous variable, we used random forest to classify their letter grade (A, B, C, etc.,) and performance (high-performing and low-performning). In Portugal, universities use a 0-20 scale grading system, which can be translated to the letter grade system used in the US as follows.
+
+| Portugal Grade | US grade | 
+| :--- | :---: |
+| 18 - 20 | A+ |
+| 16 - 17.9 | A |
+| 14 - 15.9 | A- |
+| 12 - 13.9 | B |
+| 10 - 11.9 | C |
+| 0 - 9.9 | F |
+
+Then, we will classify students whose grade is A+, A, and A- as high-performing students while those whose grade is B, C, and F as low-performing students.
+
+To give our readers a brief overview of the random forest algorithm, random forest is an extension of the decision tree algorithm. A decision tree splits the dataset based on a binary condition of the data points’ features recursively. For each split, among all possible conditions, the condition that decreases the variance of the dataset after split the most is selected. After a certain number of split or when the variance is under a desired threshold, the decision tree stops splitting. For any new data point, the prediction will be the mean of the datapoints that satisfy the same binary conditions of the decision tree.
+
+A random forest algorithm creates multiple decision trees and aggregate the result of the trees to obtain the final result. It randomly selects a certain number of observations and a certain number of features or variables from the original dataset and then train a decision tree based on each selection. The aggregation of multiple decision trees based on randomly sampled data makes the model less sensitive to subtle changes in the training data.
+
+After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at.
+
+We trained this model in python using the sklearn package.
+
+## 5.4 XGBoost
+Random forest is a very basic tree-based machine learning algorithm and we do not expect it to perform very well. Therefore, we also used XGBoost, a more sophisticated tree-based algorithm, to classify the letter grade and performance of students.
+
+To understand XGBoost, we must first understand gradient boosting. Gradient boosting is an extension of the decision tree algorithm. It creates multiple decision trees and aggregate the results to obtain the final result. But unlike random forest, every decision tree gradient boosting creates depends on the results of the previous tree. The learning process starts from simply taking the mean of the dependent variable in the training set. Then, the residual error for each observation is calculated and a new decision tree is built to split the data until a certain number of leaves, which is preset as a parameter, is created. As the number of leaves is restricted, if more than one value is on the same leave, the value on that leaf will be replaced with their mean.
+
+The predictions of residuals obtained by a decision tree will be scaled by a factor between 0 to 1, named learning rate, to prevent the model from over-fitting to the training data. And the actual prediction of this new tree will be the prediction of the previous tree plus the product of learning rate and the predicted residuals from the new tree. Then, the new residual error is calculated and the same process is repeated until a certain number of decision trees, which is also a preset parameter, is created. The final result $\hat{Y}$ of gradient boosting is as follows:
+
+$$
+\hat{Y} = \bar{Y} + \gamma r_1 + \gamma r_2 + \cdots + \gamma r_n
+$$
+
+Where $\hat{Y}$ is the mean of training data, $r_i$ is the residual error predicted by each decision tree,
+and $\gamma$ is the learning rate.
+
+Now, we move on to XGBoost. XGBoost is an extension of the Gradient Boosting algorithm. Similar to Gradient Boosting, it creates multiple trees to predict the residual error made by the past prediction and aggregate them to produce the final result. The differences between the two algorithms are the condition of splitting data and create branches in the decision tree, the inclusion of a regularization parameter, and the inclusion of a pruning process.
+
+In Gradient Boosting, the condition to split data at each node in the decision tree is the one that decreases the variance of the data the most after split. While in XGBoost, the condition is the one that increases the similarity score of the data the most after split. The algorithm stops splitting the data after a certain number of times, which is a preset parameter. The similarity score of a leaf is calculated as:
+
+$$
+\text{Similarity Score} = \frac{(\sum \text{Residual})^2}{\text{Number of Residuals} + \lambda}
+$$
+
+Where $\gamma$ is a preset regularization parameter, ranging from 0 to positive infinity, that prevents the model from overfitting to the training data. After the split, the condition that maximizes the increase in similarity score is chosen. This parameter is also included when calculating the prediction result of each leaf:
+
+$$
+\text{predicted residual} = \frac{\sum \text{residual}}{\text{number of residual} + \lambda}
+$$
+
+Before the algorithm move on to build the next tree, XGBoost has an additional step of pruning. Starting from the last leaf created in the decision tree, if the increase in similarity score is smaller than gamma, which is a preset parameter, that split will be pruned, or eliminated from the decision tree. The process continues to the second last leaf in the decision tree until the increase in similarity score of one leaf is larger than gamma.
+
+Then, next tree is built based on the residual error of the prediction of this tree until a certain number of trees has been created. The final result is also calculated the same way as in Gradient Boosting: summing the base of prediction and all the products of predicted residuals and a learning rate.
+
+After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at.
+
+We trained this model in python using the xgboost package.
+
+# 6 Results
+## 6.2 Random Forest
+### 6.2.1 Predicting Student Letter Grade
+![Top 20 Important Features in Predicting Letter Grade by RF](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=75%}
+
+As we can see in @fig-RF_L_IF, total alchohal consumption is the most important feature in predicting a student's letter grade. It is slightly more important than the number of classes failed in the past and significantly more important than any other features. This result strongly confirms our hypothesis that total alchohol consumption contributes well to the prediction of students' grade.
+
+However, the test error rate of random forest is 0.6538, meaning the model predicted 65.38% of the data wrong in the test set. But note that we have 6 levels here (A+, A, A-, B, C, F), the error rate of random guessing is 0.8333. Therefore, although the test error rate is not very low, it is still much lower than random guessing, making our model meaningful in predicting student letter grade.
+
+Now, we present the confusion matrix to see where is the model failing at. Note that 1 - 6 cooresponds to F - A+ respectively.
+
+![Confusion Matrix in Predicting Letter Grade by RF](graphs/RF_lettergrade_confusionmatrix.png){#fig-RF_L_CM width=75%}
+
+As we can see in @fig-RF_L_CM, the model made no prediction of A or A+ and only 5 predictions of A-. This is because the number of students scoring higher or equal to A- takes up only 33% of the test set. Thus, the random forest model learns that it can perform better by just making less or no prediction of A-, A, and A+. After realizing this, we modified the ocde to force the model to make predictions of A- to A+. But the resulting test error rate is even higher. Therefore, such bias might just be an inherent flaw in the algorithm of random forest.
+
+Finally, we present the ROC curve for this model.
+
+![ROC Curve in Predicting Letter Grade by RF](graphs/RF_lettergrade_ROC.png){#fig-RF_L_ROC width=75%}
+
+As we can see in @fig-RF_L_ROC, the model performs the best when predicting F and A+ as their curves have the highest AUC score.
+
+### 6.2.2 Predicting Student Performance
+![Top 20 Important Features in Predicting Performance by RF](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=75%}
+
+As we can see in @fig-RF_P_IF, when predicting student performance (high or low), the most important feature is the education of the mother, which significantly outperformed all other predictors, followed by total alchohol consumption. The number of classes failed, which is the second important feature in predicting student letter grade, now ranks the fourth. Therefore, we can still conclude that total alchohol consumption is an important predictor of student performance.
+
+The test error rate for this model is 0.3385, meaning that it predicted 33.85% of the data wrong in test set. Note that we canot compare this error rate with the previous one as the outcome variable here, the performance, is binary, making random guessing having a error rate of 50%. 
+
+The test error rate is still pretty high. And we present the confusion matrix to see where is the model failing at. Note that 0 is for low performance and 1 is for high performance.
+
+![Confusion Matrix in Predicting Performance by RF](graphs/RF_performance_confusionmatrix.png){#fig-RF_P_CM width=75%}
+
+As we can see in @fig-RF_P_CM, we encountered the same problem as in 4.2.1. As there are fewer students with high performance, the model learns that it can perform better by making less prediction of high performance.
+
+Finally, we present the ROC curve for this model.
+
+![ROC Curve in Predicting Performance by RF](graphs/RF_performance_ROC.png){#fig-RF_P_ROC width=75%}
+
+From @fig-RF_P_ROC, we can see that the ROC curve is moderately higher than the diagonal, meaning that the model is moderately better than random guessing, but still not very good at predicting performance.
+
+## 6.3 XGBoost
+### 6.3.1 Predicting Student Letter Grade
+![Top 20 Important Features in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=75%}
+
+As shown in @fig-fig-XG_L_IF, among the top 20 most important features to predict student letter grade by XGBoost, total alchohol consumption ranks the fifth. The most important feature is the number of classes failed, which is also considered to be very important by random forest. We can conclude that according to XGBoost, total alchohol consumption is an important feature to predict student letter grade.
+
+The test error rate for this model is 0.6769, meaning that the model predicted 67.69% of data wrong in the test set. Comparing to the test error rate of 0.6538 by random forest on the same problem, XGBoost does not exhibit much improvement in performance.
+
+Now, we present the confusion matrix to see where is the model failing at.
+
+![Confusion Matrix in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_confusionmatrix.png){#fig-XG_L_CM width=75%}
+
+From @fig-XG_L_CM, we can see the same problem in @fig-RF_L_CM: the model learns that it can perform better by just making less or no prediction of A-, A, and A+. Since this problem is not unique to random forest, it might be a common flaw in tree-based algorithms.
+
+![ROC curve in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_ROC.png){#fig-XG_L_ROC width=75%}
+
+From @fig-XG_L_ROC, we can see that the model is best at predicting grade F, which is consistant with the confusion matrix.
+
+### 6.3.2 Predicting Student Performance
+![Top 20 Important Features in Predicting Performance by XGBoost](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=75%}
+
+From @fig-XG_P_IF, we can see that the number of classes failed significantly outranks all other features to be the most important one while total alchohol consumption ranks only the ninth. Considering there are a total of 38 features, ranking the ninth still implies total alchohol consumption to be fairly important in predicting student letter grade.
+
+The test error rate is 0.2462, meaning that it predicted 24.62% of the data wrong in the test set. Comparing to the test error rate of 0.3385 by random forest on the same problem, XGBoost exhibits great improvement in performance.
+
+![Confusion Matrix in Predicting Performance by XGBoost](graphs/xg_performance_confusionmatrix.png){#fig-XG_P_CM width=75%}
+
+From the confusion matrix, we can see that the model is not just predicting less high performance (level 1) to improve performance. Although it is still biased towards low performance, it is a lot better than the random forest model as shown in @fig-RF_P_CM.
+
+![ROC curve in Predicting Performance by XGBoost](graphs/xg_performance_ROC.png){#fig-XG_P_ROC width=75%}
+
+Compared to the AUC of 0.74 by the random forest model, the XGBoost does not show much improvement with an AUC of 0.78.
+
+# 7 Conclusion
+We used random forest and XGboost to predict the letter grade and the performance of students. When predicting letter grade, both random forest and XGboost consider total alchohol consumption to be one of the most important features in prediction. Their test error rate and AUC scores when predicting each grade are very similar to each other, indicating similar and moderately good model performance.
+
+When predicting student performance, random forest consider total alchohol consumption to be the second most important feature while XGBoost only consider it to be the ninth important feature. XGBoost outperformed random forest significantly but their AUC scores are very similar. This indicates that the discriminative power of both models are similar, but differ in their calibration. Future research could try to finetune the random forest model to see if it can perform as good as XGBoost.
+
+Overall, we can conclude that total alchohol consumption is one of the most important predictors of student letter grade and performance according to random forest and XGBoost.
+
+For limitations, both models are biased towards the class with more observations (lower letter grade and low performance) and forcing them to balance the prediction would increase test error rate, which is probably the shared flaw of tree-based classification algorithms. Therefore, tree-based classification algorithms might not be the best technique when the dataset is unbalanced.
+
+Also, we used random forest and XGBoost for classification, making it impossible to compare their performance with our linear regression model. Since random forest and XGBoost can also be applied in regression (although it is less common), future research can use the regression version of the two algorithms and compare their performance with that of linear regression.
+
+# 8 Limitations and Future Directions
+
+python cell wrapping:
+```{python}
+put your code in a python cell like this
+```
+
+```{python}
+
+```
