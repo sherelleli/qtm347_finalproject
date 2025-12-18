@@ -304,6 +304,14 @@ After we trained the model, we will look at the top 20 important features the mo
 
 We trained this model in python using the xgboost package.
 
+## 5.5 Neural Networks & Text Mining
+
+To explore non-linear predictive capabilities and extract qualitative context from categorical data, we employed two complementary approaches: neural network classification and text mining.
+
+**Text Mining:** We aggregated multiple categorical variables—including parental jobs, school choice reasons, and support indicators—into a single tokenized text corpus. We then generated word clouds stratified by performance level to identify differences in the relative prominence of background factors between high-performing and low-performing students.
+
+**Neural Networks:** We formulated a binary classification task to predict high performance (defined as $G3 \ge 14$, corresponding to A grades). We trained a Multi-Layer Perceptron (MLP) classifier with two hidden layers (64 and 32 units, ReLU activation) and compared it against a baseline decision tree (max depth 5). To monitor stability and overfitting, we tracked the training and validation log loss over 60 epochs.
+
 # 6 Results
 
 ## 6.1 Principal Components Analysis
@@ -591,6 +599,19 @@ From the confusion matrix, we can see that the model is not just predicting less
 
 Compared to the AUC of 0.74 by the random forest model, the XGBoost does not show much improvement with an AUC of 0.78.
 
+## 6.5 Neural Networks & Text Mining Results
+
+### 6.5.1 Qualitative Insights from Text Mining
+![Word Clouds of Student Backgrounds by Performance Level](graphs/word_cloud_good_vs_bad.png){#fig-wordclouds width=90%}
+The word clouds are dominated by repeated categorical levels, such as `guardian_mother` and standard parental job labels. However, stratifying by performance reveals subtle shifts. The lower-performing group ($G3 < 10$) shows a higher prevalence of disengagement tokens (notably `activities_no` and `schoolsup_no`), while the higher-performing group ($G3 \ge 14$) shows comparatively more extracurricular participation (`activities_yes`). This suggests that while broader family contexts are consistent, engagement-related variables differentiate high performance more effectively than demographics alone.
+
+### 6.5.2 Classification Performance (Neural Network vs Tree)
+We compared the Multi-Layer Perceptron (MLP) against a standard Decision Tree to test if non-linear complexity improves prediction for high-performing students. On the held-out test set, both the Neural Network and the Decision Tree achieved an accuracy of **0.7000**. This matches the baseline accuracy exactly, indicating that neither model successfully distinguished top-tier students better than simply predicting "Not High Performing" for everyone. This reinforces the difficulty of predicting exceptional academic success using only demographic and background data without access to prior grade history.
+
+### 6.5.3 Training Dynamics
+![Neural Network Training vs Validation Loss](graphs/nn_loss_curve.png){#fig-loss-curve width=75%}
+The loss curve shows validation loss flattening (and even slightly increasing) while training loss continues to decrease. This divergence indicates that the model began overfitting the training noise relatively quickly. The inability of the validation loss to decrease significantly below its starting point confirms that the demographic features lack strong signals for this specific high-performance threshold ($G3 \ge 14$).
+
 # 7 Conclusion
 ## Linear, Stepwise, and Penalized Regression
 
@@ -604,6 +625,11 @@ Overall, we can conclude that total alchohol consumption is one of the most impo
 For limitations, both models are biased towards the class with more observations (lower letter grade and low performance) and forcing them to balance the prediction would increase test error rate, which is probably the shared flaw of tree-based classification algorithms. Therefore, tree-based classification algorithms might not be the best technique when the dataset is unbalanced.
 
 Also, we used random forest and XGBoost for classification, making it impossible to compare their performance with our linear regression model. Since random forest and XGBoost can also be applied in regression (although it is less common), future research can use the regression version of the two algorithms and compare their performance with that of linear regression.
+
+## Neural Networks & Text Mining
+Overall, the neural network performed identically to the shallow decision tree in this split, with neither model managing to outperform the majority-class baseline. The loss dynamics highlight that while the network began to learn, it quickly plateaued, suggesting that demographic variables alone are insufficient to reliably identify "A-student" performance. Since the neural network did not demonstrate superior accuracy here, its "black box" nature makes it less attractive than transparent models for this specific task.
+
+Connecting back to alcohol use, our feature importance analysis indicates that alcohol consumption is a lower-priority predictor compared to academic history (failures) and engagement (absences). It does not appear in the top 10 most important features, suggesting it is a weak standalone signal for high academic performance. In practice, this means that screening students based solely on alcohol use would likely generate many false positives. A more effective approach would be to treat alcohol as one piece of a broader profile, alongside student engagement and support indicators that stand out in the stratified word clouds.
 
 # 8 Limitations and Future Directions
 
