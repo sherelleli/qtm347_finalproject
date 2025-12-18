@@ -603,14 +603,22 @@ Compared to the AUC of 0.74 by the random forest model, the XGBoost does not sho
 
 ### 6.5.1 Qualitative Insights from Text Mining
 ![Word Clouds of Student Backgrounds by Performance Level](graphs/word_cloud_good_vs_bad.png){#fig-wordclouds width=90%}
-The word clouds are dominated by repeated categorical levels, such as `guardian_mother` and standard parental job labels. However, stratifying by performance reveals subtle shifts. The lower-performing group ($G3 < 10$) shows a higher prevalence of disengagement tokens (notably `activities_no` and `schoolsup_no`), while the higher-performing group ($G3 \ge 14$) shows comparatively more extracurricular participation (`activities_yes`). This suggests that while broader family contexts are consistent, engagement-related variables differentiate high performance more effectively than demographics alone.
+
+Because the corpus is built from `column_value` tokens (coded categorical levels such as `guardian_mother` and parental job labels), the word clouds should be interpreted as a frequency summary of background categories rather than natural-language themes. To keep definitions consistent with our classification task, we stratified students by high performance ($G3 \ge 14$) versus not high performance ($G3 < 14$). The two clouds share many dominant background tokens, suggesting that broad family context is relatively similar across groups, while any differences are more subtle and engagement-related (for example, extracurricular participation indicators like `activities_yes` vs `activities_no`). Overall, the word clouds are descriptive context rather than strong evidence of causal drivers.
 
 ### 6.5.2 Classification Performance (Neural Network vs Tree)
-We compared the Multi-Layer Perceptron (MLP) against a standard Decision Tree to test if non-linear complexity improves prediction for high-performing students. On the held-out test set, both the Neural Network and the Decision Tree achieved an accuracy of **0.7000**. This matches the baseline accuracy exactly, indicating that neither model successfully distinguished top-tier students better than simply predicting "Not High Performing" for everyone. This reinforces the difficulty of predicting exceptional academic success using only demographic and background data without access to prior grade history.
+We compared the Multi-Layer Perceptron (MLP) against a standard Decision Tree to test whether non-linear complexity improves prediction for high-performing students. On the held-out test set, both the Neural Network and the Decision Tree achieved an accuracy of **0.7000**, which is approximately the majority-class baseline in this split. This suggests that, under the $G3 \ge 14$ threshold and without prior grade history (`G1`, `G2`), the available demographic and background variables provide limited signal for distinguishing top-performing students. For this reason, accuracy alone is not sufficient, and confusion-matrix and ROC-style diagnostics are needed to evaluate minority-class performance.
 
 ### 6.5.3 Training Dynamics
 ![Neural Network Training vs Validation Loss](graphs/nn_loss_curve.png){#fig-loss-curve width=75%}
 The loss curve shows validation loss flattening (and even slightly increasing) while training loss continues to decrease. This divergence indicates that the model began overfitting the training noise relatively quickly. The inability of the validation loss to decrease significantly below its starting point confirms that the demographic features lack strong signals for this specific high-performance threshold ($G3 \ge 14$).
+
+### 6.5.4 Feature Importance (Bagged Tree)
+To verify the role of alcohol, we analyzed the feature importance from the bagged tree model.
+
+![Top 10 Features (Bagged Tree)](graphs/part3_importance.png){#fig-part3-importance width=75%}
+
+As shown in Figure @fig-part3-importance, alcohol consumption (`Talc`) does not appear in the top 10 predictors, confirming it is a weak signal compared to failures, absences, and parental education.
 
 # 7 Conclusion
 ## Linear, Stepwise, and Penalized Regression
@@ -629,11 +637,14 @@ Also, we used random forest and XGBoost for classification, making it impossible
 ## Neural Networks & Text Mining
 Overall, the neural network performed identically to the shallow decision tree in this split, with neither model managing to outperform the majority-class baseline. The loss dynamics highlight that while the network began to learn, it quickly plateaued, suggesting that demographic variables alone are insufficient to reliably identify "A-student" performance. Since the neural network did not demonstrate superior accuracy here, its "black box" nature makes it less attractive than transparent models for this specific task.
 
-Connecting back to alcohol use, our feature importance analysis indicates that alcohol consumption is a lower-priority predictor compared to academic history (failures) and engagement (absences). It does not appear in the top 10 most important features, suggesting it is a weak standalone signal for high academic performance. In practice, this means that screening students based solely on alcohol use would likely generate many false positives. A more effective approach would be to treat alcohol as one piece of a broader profile, alongside student engagement and support indicators that stand out in the stratified word clouds.
 
 # 8 Limitations and Future Directions
+
+Connecting back to alcohol use, the role of alcohol depends on the model family. In the regression-based models (OLS/stepwise/penalized), the Talc coefficient is consistently negative but small relative to dominant academic predictors such as past failures, study time, and aspirations, suggesting alcohol contributes only a modest secondary signal after controls. In contrast, tree-based models may rank Talc highly in feature importance because importance measures reflect split utility in that model and can be influenced by correlation with other behavioral variables (and by known biases in impurity-based importance). Taken together, these results suggest alcohol is not irrelevant, but it is unlikely to be a reliable standalone screening variable. A more defensible approach is to treat alcohol as one feature within a broader risk profile that also includes engagement and academic-history indicators.
+
 
 python cell wrapping:
 ```{python}
 put your code in a python cell like this
 ```
+
