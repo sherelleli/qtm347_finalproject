@@ -10,7 +10,7 @@ format:
     template: article-template.latex
     toc: true
     number-sections: true
-    fontsize: 11pt
+    fontsize: 8pt
     fig-width: 6
     fig-height: 4
     code-line-wrap: true
@@ -94,6 +94,7 @@ Table X. Skewness of Numeric Variables in the Student Performance Dataset
 ![Distributions of Key Variables with Potential Outliers](graphs/distributions.png){#fig-distributions width=75%}
 
 ![Boxplots to Identify Outliers](graphs/boxplots_outliers.png){#fig-boxplots width=75%}
+
 Before modeling, distributions of all numeric predictors were examined using summary statistics, skewness measures, histograms, and boxplots. Several variables—such as `failures`, `absences`, and alcohol measures—exhibited strong right skew. These patterns reflect real behavioral phenomena (e.g., most students have zero failures or low alcohol consumption) rather than data errors.
 
 No transformations were applied despite skewness. This decision was deliberate: the variables are bounded, interpretable on their original scales, and later modeling approaches (robust standard errors and penalized regression) are well-suited to handling non-normal predictors. Outliers identified via interquartile range methods were retained, as they represent genuine student experiences rather than noise.
@@ -160,9 +161,9 @@ Alcohol consumption is generally low in the sample. Weekday drinking (`Dalc`) is
 When examining alcohol variables against `G3`, all three measures (`Dalc`, `Walc`, and `Talc`) show weak but consistently negative correlations with final grades. Visualizations suggest a slight downward trend in grades as alcohol consumption increases, but the effect size is modest, indicating that alcohol use alone is unlikely to be a dominant predictor of academic performance.
 
 ## Multicollinearity Assessment
-![Correlation Matrix of Numeric Predictors with G3](graphs/correlation_matrix.png){#fig-corr-matrix width=75%}
+![Correlation Matrix of Numeric Predictors with G3](graphs/correlation_matrix.png){#fig-corr-matrix width=30%}
 
-![Correlations Among Behavioral Predictors](graphs/behavioral_correlations.png){#fig-behavioral-corr width=75%}
+![Correlations Among Behavioral Predictors](graphs/behavioral_correlations.png){#fig-behavioral-corr width=30%}
 
 Correlation matrices among numeric predictors revealed notable clustering among behavioral variables, especially between `Dalc` and `Walc` and between parental education measures. Variance Inflation Factor (VIF) diagnostics showed that all VIF values were below conventional thresholds for severe multicollinearity, though alcohol variables had the highest values among predictors.
 
@@ -198,11 +199,11 @@ PCA was fit using the full set of standardized numeric predictors. All component
 
 To aid interpretation, component loadings for the first five principal components were examined and visualized using a heatmap. Loadings reflect the contribution of each original variable to a given component.
 
-![PCA Loadings for First Five Components](graphs/pca_loadings.png){#fig-pca-loadings width=70%}
+![PCA Loadings for First Five Components](graphs/pca_loadings.png){#fig-pca-loadings width=30%}
 
 Finally, a biplot of the first two principal components was constructed, with observations projected into PC space and colored by final grade (`G3`). Variable loadings were overlaid as vectors to visualize how predictors align with the dominant axes of variation.
 
-![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=75%}
+![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=30%}
 
 ## 5.2 Linear,Stepwise, and Penalized Regression
 ### 5.2.1 Baseline Linear Regression
@@ -443,7 +444,7 @@ Overall, stepwise selection supports the conclusion that alcohol consumption con
 
 Figure @fig-lasso-path shows the LASSO coefficient paths as a function of the regularization parameter α (log scale). As α increases, coefficients shrink toward zero, with the dashed red line indicating the cross-validated optimal value (α ≈ 0.098).
 
-![LASSO Coefficient Paths](graphs/lasso_coefficient_paths.png){#fig-lasso-path width=75%}
+![LASSO Coefficient Paths](graphs/lasso_coefficient_paths.png){#fig-lasso-path width=30%}
 
 The coefficient paths highlight a clear hierarchy of predictor importance. Academic difficulty (`failures`) remains large and negative across a wide range of α values and is among the last coefficients to be shrunk to zero, indicating strong and stable predictive power. School context and educational aspirations (`school_MS`, `higher_yes`) also persist under substantial regularization, reinforcing their central role in explaining final grades. Study behavior (`studytime`) shows a smaller but consistently positive contribution.
 
@@ -529,7 +530,7 @@ Overall, the model evaluation supports a nuanced conclusion: alcohol consumption
 
 ## 6.3 Random Forest
 ### 6.3.1 Predicting Student Letter Grade
-![Top 20 Important Features in Predicting Letter Grade by RF](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=75%}
+![Top 20 Important Features in Predicting Letter Grade by RF](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=30%}
 
 As we can see in @fig-RF_L_IF, total alchohal consumption is the most important feature in predicting a student's letter grade. It is slightly more important than the number of classes failed in the past and significantly more important than any other features. This result strongly confirms our hypothesis that total alchohol consumption contributes well to the prediction of students' grade.
 
@@ -537,18 +538,18 @@ However, the test error rate of random forest is 0.6538, meaning the model predi
 
 Now, we present the confusion matrix to see where is the model failing at. Note that 1 - 6 cooresponds to F - A+ respectively.
 
-![Confusion Matrix in Predicting Letter Grade by RF](graphs/RF_lettergrade_confusionmatrix.png){#fig-RF_L_CM width=75%}
+![Confusion Matrix in Predicting Letter Grade by RF](graphs/RF_lettergrade_confusionmatrix.png){#fig-RF_L_CM width=30%}
 
 As we can see in @fig-RF_L_CM, the model made no prediction of A or A+ and only 5 predictions of A-. This is because the number of students scoring higher or equal to A- takes up only 33% of the test set. Thus, the random forest model learns that it can perform better by just making less or no prediction of A-, A, and A+. After realizing this, we modified the ocde to force the model to make predictions of A- to A+. But the resulting test error rate is even higher. Therefore, such bias might just be an inherent flaw in the algorithm of random forest.
 
 Finally, we present the ROC curve for this model.
 
-![ROC Curve in Predicting Letter Grade by RF](graphs/RF_lettergrade_ROC.png){#fig-RF_L_ROC width=75%}
+![ROC Curve in Predicting Letter Grade by RF](graphs/RF_lettergrade_ROC.png){#fig-RF_L_ROC width=30%}
 
 As we can see in @fig-RF_L_ROC, the model performs the best when predicting F and A+ as their curves have the highest AUC score.
 
 ### 6.3.2 Predicting Student Performance
-![Top 20 Important Features in Predicting Performance by RF](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=75%}
+![Top 20 Important Features in Predicting Performance by RF](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=30%}
 
 As we can see in @fig-RF_P_IF, when predicting student performance (high or low), the most important feature is the education of the mother, which significantly outperformed all other predictors, followed by total alchohol consumption. The number of classes failed, which is the second important feature in predicting student letter grade, now ranks the fourth. Therefore, we can still conclude that total alchohol consumption is an important predictor of student performance.
 
@@ -556,19 +557,19 @@ The test error rate for this model is 0.3385, meaning that it predicted 33.85% o
 
 The test error rate is still pretty high. And we present the confusion matrix to see where is the model failing at. Note that 0 is for low performance and 1 is for high performance.
 
-![Confusion Matrix in Predicting Performance by RF](graphs/RF_performance_confusionmatrix.png){#fig-RF_P_CM width=75%}
+![Confusion Matrix in Predicting Performance by RF](graphs/RF_performance_confusionmatrix.png){#fig-RF_P_CM width=30%}
 
 As we can see in @fig-RF_P_CM, we encountered the same problem as in 4.2.1. As there are fewer students with high performance, the model learns that it can perform better by making less prediction of high performance.
 
 Finally, we present the ROC curve for this model.
 
-![ROC Curve in Predicting Performance by RF](graphs/RF_performance_ROC.png){#fig-RF_P_ROC width=75%}
+![ROC Curve in Predicting Performance by RF](graphs/RF_performance_ROC.png){#fig-RF_P_ROC width=30%}
 
 From @fig-RF_P_ROC, we can see that the ROC curve is moderately higher than the diagonal, meaning that the model is moderately better than random guessing, but still not very good at predicting performance.
 
 ## 6.4 XGBoost
 ### 6.4.1 Predicting Student Letter Grade
-![Top 20 Important Features in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=75%}
+![Top 20 Important Features in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=30%}
 
 As shown in @fig-fig-XG_L_IF, among the top 20 most important features to predict student letter grade by XGBoost, total alchohol consumption ranks the fifth. The most important feature is the number of classes failed, which is also considered to be very important by random forest. We can conclude that according to XGBoost, total alchohol consumption is an important feature to predict student letter grade.
 
@@ -576,26 +577,26 @@ The test error rate for this model is 0.6769, meaning that the model predicted 6
 
 Now, we present the confusion matrix to see where is the model failing at.
 
-![Confusion Matrix in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_confusionmatrix.png){#fig-XG_L_CM width=75%}
+![Confusion Matrix in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_confusionmatrix.png){#fig-XG_L_CM width=30%}
 
 From @fig-XG_L_CM, we can see the same problem in @fig-RF_L_CM: the model learns that it can perform better by just making less or no prediction of A-, A, and A+. Since this problem is not unique to random forest, it might be a common flaw in tree-based algorithms.
 
-![ROC curve in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_ROC.png){#fig-XG_L_ROC width=75%}
+![ROC curve in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_ROC.png){#fig-XG_L_ROC width=30%}
 
 From @fig-XG_L_ROC, we can see that the model is best at predicting grade F, which is consistant with the confusion matrix.
 
 ### 6.4.2 Predicting Student Performance
-![Top 20 Important Features in Predicting Performance by XGBoost](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=75%}
+![Top 20 Important Features in Predicting Performance by XGBoost](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=30%}
 
 From @fig-XG_P_IF, we can see that the number of classes failed significantly outranks all other features to be the most important one while total alchohol consumption ranks only the ninth. Considering there are a total of 38 features, ranking the ninth still implies total alchohol consumption to be fairly important in predicting student letter grade.
 
 The test error rate is 0.2462, meaning that it predicted 24.62% of the data wrong in the test set. Comparing to the test error rate of 0.3385 by random forest on the same problem, XGBoost exhibits great improvement in performance.
 
-![Confusion Matrix in Predicting Performance by XGBoost](graphs/xg_performance_confusionmatrix.png){#fig-XG_P_CM width=75%}
+![Confusion Matrix in Predicting Performance by XGBoost](graphs/xg_performance_confusionmatrix.png){#fig-XG_P_CM width=30%}
 
 From the confusion matrix, we can see that the model is not just predicting less high performance (level 1) to improve performance. Although it is still biased towards low performance, it is a lot better than the random forest model as shown in @fig-RF_P_CM.
 
-![ROC curve in Predicting Performance by XGBoost](graphs/xg_performance_ROC.png){#fig-XG_P_ROC width=75%}
+![ROC curve in Predicting Performance by XGBoost](graphs/xg_performance_ROC.png){#fig-XG_P_ROC width=30%}
 
 Compared to the AUC of 0.74 by the random forest model, the XGBoost does not show much improvement with an AUC of 0.78.
 
@@ -610,13 +611,14 @@ Because the corpus is built from `column_value` tokens (coded categorical levels
 We compared the Multi-Layer Perceptron (MLP) against a standard Decision Tree to test whether non-linear complexity improves prediction for high-performing students. On the held-out test set, both the Neural Network and the Decision Tree achieved an accuracy of **0.7000**, which is approximately the majority-class baseline in this split. This suggests that, under the $G3 \ge 14$ threshold and without prior grade history (`G1`, `G2`), the available demographic and background variables provide limited signal for distinguishing top-performing students. For this reason, accuracy alone is not sufficient, and confusion-matrix and ROC-style diagnostics are needed to evaluate minority-class performance.
 
 ### 6.5.3 Training Dynamics
-![Neural Network Training vs Validation Loss](graphs/nn_loss_curve.png){#fig-loss-curve width=75%}
+![Neural Network Training vs Validation Loss](graphs/nn_loss_curve.png){#fig-loss-curve width=30%}
+
 The loss curve shows validation loss flattening (and even slightly increasing) while training loss continues to decrease. This divergence indicates that the model began overfitting the training noise relatively quickly. The inability of the validation loss to decrease significantly below its starting point confirms that the demographic features lack strong signals for this specific high-performance threshold ($G3 \ge 14$).
 
 ### 6.5.4 Feature Importance (Bagged Tree)
 To verify the role of alcohol, we analyzed the feature importance from the bagged tree model.
 
-![Top 10 Features (Bagged Tree)](graphs/part3_importance.png){#fig-part3-importance width=75%}
+![Top 10 Features (Bagged Tree)](graphs/part3_importance.png){#fig-part3-importance width=30%}
 
 As shown in Figure @fig-part3-importance, alcohol consumption (`Talc`) does not appear in the top 10 predictors, confirming it is a weak signal compared to failures, absences, and parental education.
 
@@ -642,9 +644,4 @@ Overall, the neural network performed identically to the shallow decision tree i
 
 Connecting back to alcohol use, the role of alcohol depends on the model family. In the regression-based models (OLS/stepwise/penalized), the Talc coefficient is consistently negative but small relative to dominant academic predictors such as past failures, study time, and aspirations, suggesting alcohol contributes only a modest secondary signal after controls. In contrast, tree-based models may rank Talc highly in feature importance because importance measures reflect split utility in that model and can be influenced by correlation with other behavioral variables (and by known biases in impurity-based importance). Taken together, these results suggest alcohol is not irrelevant, but it is unlikely to be a reliable standalone screening variable. A more defensible approach is to treat alcohol as one feature within a broader risk profile that also includes engagement and academic-history indicators.
 
-
-python cell wrapping:
-```{python}
-put your code in a python cell like this
-```
 
