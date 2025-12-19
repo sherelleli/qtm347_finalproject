@@ -28,6 +28,8 @@ execute:
   message: false
 ---
 
+{{< pagebreak >}}
+
 # Introduction & Executive Summary 
 
 Alcohol consumption is a common feature of adolescent and young adult social life, and a substantial body of research has examined its relationship with academic outcomes. Prior studies consistently find that higher levels of alcohol use are associated with lower grades, increased absenteeism, and reduced academic engagement, though the magnitude of these effects varies once background and behavioral factors are taken into account. For example, DeSimone (2010) finds that binge drinking is linked to lower GPA after controlling for student characteristics, while Wolaver (2002) shows that alcohol use is strongly related to missed classes, which in turn affects academic performance ([DeSimone, 2010](https://doi.org/10.1016/j.jhealeco.2009.11.001); [Wolaver, 2002](https://www.jstor.org/stable/3083345)).
@@ -74,8 +76,6 @@ All variables were retained in formats appropriate for regression-based and mach
 ## Data Loading and Outcome Definition
 The analysis uses the `student-por.csv` dataset from the UCI Machine Learning Repository (649 observations, 33 variables), chosen over the mathematics dataset for its larger sample size. Initial inspection confirmed no missing values and all variables within documented ranges. The primary outcome is `G3` (final Portuguese grade). First- and second-period grades (`G1`, `G2`) were removed from predictors due to high correlations with `G3` (r > 0.8 and 0.9, respectively), which would introduce target leakage rather than reveal behavioral or family predictors.
 
-![Grade Correlations and Leakage Check](graphs/leakage_check.png){#fig-leakage width=60%}
-
 ## Variable Typing and Encoding Decisions
 All string-based variables were explicitly converted to categorical data types to reflect their qualitative nature and to prepare them for later encoding. Ordinal variables—such as `studytime`, `traveltime`, `Dalc`, `Walc`, `famrel`, `freetime`, `goout`, `health`, `Medu`, and `Fedu`—were intentionally kept as numeric rather than one-hot encoded. These variables have meaningful ordering, and treating them as numeric preserves interpretability of regression coefficients (e.g., moving from “low” to “high” consumption or education level).
 
@@ -88,9 +88,11 @@ This engineered variable provides a single, interpretable measure of overall alc
 
 ## Distribution Checks and Outlier Assessment
 
-![Distributions of Key Variables with Potential Outliers](graphs/distributions.png){#fig-distributions width=75%}
+::: {layout-ncol=2}
+![Distributions of Key Variables with Potential Outliers](graphs/distributions.png){#fig-distributions width=100%}
 
-![Boxplots to Identify Outliers](graphs/boxplots_outliers.png){#fig-boxplots width=75%}
+![Boxplots to Identify Outliers](graphs/boxplots_outliers.png){#fig-boxplots width=100%}
+:::
 
 Before modeling, distributions of all numeric predictors were examined using summary statistics, skewness measures, histograms, and boxplots. Several variables—such as `failures`, `absences`, and alcohol measures—exhibited strong right skew. These patterns reflect real behavioral phenomena (e.g., most students have zero failures or low alcohol consumption) rather than data errors.
 
@@ -100,7 +102,7 @@ After removing leakage variables and adding the engineered `Talc` feature, the f
 
 # 4 Exploratory Data Analysis (EDA)
 
-![Distributions of Key Variables](graphs/eda_distributions.png){#fig-eda-dist width=75%}
+![Distributions of Key Variables](graphs/eda_distributions.png){#fig-eda-dist width=50%}
 
 ## Outcome Distribution
 The final grade (`G3`) has a mean of approximately 11.9 (out of 20) and exhibits mild left skew, with most students scoring between 10 and 14. This distribution suggests meaningful variation in academic performance while avoiding extreme ceiling or floor effects, making it suitable for regression-based analysis.
@@ -121,9 +123,12 @@ Alcohol consumption is generally low in the sample. Weekday drinking (`Dalc`) is
 When examining alcohol variables against `G3`, all three measures (`Dalc`, `Walc`, and `Talc`) show weak but consistently negative correlations with final grades. Visualizations suggest a slight downward trend in grades as alcohol consumption increases, but the effect size is modest, indicating that alcohol use alone is unlikely to be a dominant predictor of academic performance.
 
 ## Multicollinearity Assessment
+
+::: {layout-ncol=2}
 ![Correlation Matrix of Numeric Predictors with G3](graphs/correlation_matrix.png){#fig-corr-matrix width=40%}
 
 ![Correlations Among Behavioral Predictors](graphs/behavioral_correlations.png){#fig-behavioral-corr width=40%}
+:::
 
 Correlation matrices among numeric predictors revealed notable clustering among behavioral variables, especially between `Dalc` and `Walc` and between parental education measures. Variance Inflation Factor (VIF) diagnostics showed that all VIF values were below conventional thresholds for severe multicollinearity, though alcohol variables had the highest values among predictors.
 
@@ -155,11 +160,14 @@ PCA was fit using the full set of standardized numeric predictors. All component
 
 To aid interpretation, component loadings for the first five principal components were examined and visualized using a heatmap. Loadings reflect the contribution of each original variable to a given component.
 
+::: {layout-ncol=2}
 ![PCA Loadings for First Five Components](graphs/pca_loadings.png){#fig-pca-loadings width=40%}
+
+![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=40%}
+:::
 
 Finally, a biplot of the first two principal components was constructed, with observations projected into PC space and colored by final grade (`G3`). Variable loadings were overlaid as vectors to visualize how predictors align with the dominant axes of variation.
 
-![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=40%}
 
 ## 5.2 Linear,Stepwise, and Penalized Regression
 ### 5.2.1 Baseline Linear Regression
@@ -216,36 +224,7 @@ A random forest algorithm creates multiple decision trees and aggregate the resu
 After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at. We trained this model in python using the sklearn package.
 
 ## 5.4 XGBoost
-Random forest is a very basic tree-based machine learning algorithm and we do not expect it to perform very well. Therefore, we also used XGBoost, a more sophisticated tree-based algorithm, to classify the letter grade and performance of students.
-
-To understand XGBoost, we must first understand gradient boosting. Gradient boosting is an extension of the decision tree algorithm. It creates multiple decision trees and aggregate the results to obtain the final result. But unlike random forest, every decision tree gradient boosting creates depends on the results of the previous tree. The learning process starts from simply taking the mean of the dependent variable in the training set. Then, the residual error for each observation is calculated and a new decision tree is built to split the data until a certain number of leaves, which is preset as a parameter, is created. As the number of leaves is restricted, if more than one value is on the same leave, the value on that leaf will be replaced with their mean.
-
-The predictions of residuals obtained by a decision tree will be scaled by a factor between 0 to 1, named learning rate, to prevent the model from over-fitting to the training data. And the actual prediction of this new tree will be the prediction of the previous tree plus the product of learning rate and the predicted residuals from the new tree. Then, the new residual error is calculated and the same process is repeated until a certain number of decision trees, which is also a preset parameter, is created. The final result $\hat{Y}$ of gradient boosting is as follows:
-
-$$
-\hat{Y} = \bar{Y} + \gamma r_1 + \gamma r_2 + \cdots + \gamma r_n
-$$
-
-Where $\hat{Y}$ is the mean of training data, $r_i$ is the residual error predicted by each decision tree,
-and $\gamma$ is the learning rate.
-
-Now, we move on to XGBoost. XGBoost is an extension of the Gradient Boosting algorithm. Similar to Gradient Boosting, it creates multiple trees to predict the residual error made by the past prediction and aggregate them to produce the final result. The differences between the two algorithms are the condition of splitting data and create branches in the decision tree, the inclusion of a regularization parameter, and the inclusion of a pruning process.
-
-In Gradient Boosting, the condition to split data at each node in the decision tree is the one that decreases the variance of the data the most after split. While in XGBoost, the condition is the one that increases the similarity score of the data the most after split. The algorithm stops splitting the data after a certain number of times, which is a preset parameter. The similarity score of a leaf is calculated as:
-
-$$
-\text{Similarity Score} = \frac{(\sum \text{Residual})^2}{\text{Number of Residuals} + \lambda}
-$$
-
-Where $\gamma$ is a preset regularization parameter, ranging from 0 to positive infinity, that prevents the model from overfitting to the training data. After the split, the condition that maximizes the increase in similarity score is chosen. This parameter is also included when calculating the prediction result of each leaf:
-
-$$
-\text{predicted residual} = \frac{\sum \text{residual}}{\text{number of residual} + \lambda}
-$$
-
-Before the algorithm move on to build the next tree, XGBoost has an additional step of pruning. Starting from the last leaf created in the decision tree, if the increase in similarity score is smaller than gamma, which is a preset parameter, that split will be pruned, or eliminated from the decision tree. The process continues to the second last leaf in the decision tree until the increase in similarity score of one leaf is larger than gamma.
-
-Then, next tree is built based on the residual error of the prediction of this tree until a certain number of trees has been created. The final result is also calculated the same way as in Gradient Boosting: summing the base of prediction and all the products of predicted residuals and a learning rate.
+Random forest is a very basic tree-based machine learning algorithm and we do not expect it to perform very well. Therefore, we also used XGBoost, a more sophisticated tree-based algorithm, to classify the letter grade and performance of students. We presented a detailed explanation of this algorithm in appendix 8.2 for readers who are interested to explore.
 
 After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at.
 
@@ -349,7 +328,14 @@ Overall, the model evaluation supports a nuanced conclusion: alcohol consumption
 
 ## Random Forest
 ### Predicting Student Letter Grade
-![Top 20 Important Features in Predicting Letter Grade by RF](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=30%}
+
+::: {layout-ncol=3}
+![Top 20 Important Features](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=100%}
+
+![Confusion Matrix](graphs/RF_lettergrade_confusionmatrix.png){#fig-RF_L_CM width=100%}
+
+![ROC Curve](graphs/RF_lettergrade_ROC.png){#fig-RF_L_ROC width=100%}
+:::
 
 As we can see in @fig-RF_L_IF, total alchohal consumption is the most important feature in predicting a student's letter grade. It is slightly more important than the number of classes failed in the past and significantly more important than any other features. This result strongly confirms our hypothesis that total alchohol consumption contributes well to the prediction of students' grade.
 
@@ -357,18 +343,21 @@ However, the test error rate of random forest is 0.6538, meaning the model predi
 
 Now, we present the confusion matrix to see where is the model failing at. Note that 1 - 6 cooresponds to F - A+ respectively.
 
-![Confusion Matrix in Predicting Letter Grade by RF](graphs/RF_lettergrade_confusionmatrix.png){#fig-RF_L_CM width=30%}
-
 As we can see in @fig-RF_L_CM, the model made no prediction of A or A+ and only 5 predictions of A-. This is because the number of students scoring higher or equal to A- takes up only 33% of the test set. Thus, the random forest model learns that it can perform better by just making less or no prediction of A-, A, and A+. After realizing this, we modified the ocde to force the model to make predictions of A- to A+. But the resulting test error rate is even higher. Therefore, such bias might just be an inherent flaw in the algorithm of random forest.
 
 Finally, we present the ROC curve for this model.
 
-![ROC Curve in Predicting Letter Grade by RF](graphs/RF_lettergrade_ROC.png){#fig-RF_L_ROC width=30%}
-
 As we can see in @fig-RF_L_ROC, the model performs the best when predicting F and A+ as their curves have the highest AUC score.
 
 ### Predicting Student Performance
-![Top 20 Important Features in Predicting Performance by RF](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=30%}
+
+::: {layout-ncol=3}
+![Top 20 Important Features](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=100%}
+
+![Confusion Matrix](graphs/RF_performance_confusionmatrix.png){#fig-RF_P_CM width=100%}
+
+![ROC Curve](graphs/RF_performance_ROC.png){#fig-RF_P_ROC width=100%}
+:::
 
 As we can see in @fig-RF_P_IF, when predicting student performance (high or low), the most important feature is the education of the mother, which significantly outperformed all other predictors, followed by total alchohol consumption. The number of classes failed, which is the second important feature in predicting student letter grade, now ranks the fourth. Therefore, we can still conclude that total alchohol consumption is an important predictor of student performance.
 
@@ -376,19 +365,22 @@ The test error rate for this model is 0.3385, meaning that it predicted 33.85% o
 
 The test error rate is still pretty high. And we present the confusion matrix to see where is the model failing at. Note that 0 is for low performance and 1 is for high performance.
 
-![Confusion Matrix in Predicting Performance by RF](graphs/RF_performance_confusionmatrix.png){#fig-RF_P_CM width=30%}
-
 As we can see in @fig-RF_P_CM, we encountered the same problem as in 4.2.1. As there are fewer students with high performance, the model learns that it can perform better by making less prediction of high performance.
 
 Finally, we present the ROC curve for this model.
-
-![ROC Curve in Predicting Performance by RF](graphs/RF_performance_ROC.png){#fig-RF_P_ROC width=30%}
 
 From @fig-RF_P_ROC, we can see that the ROC curve is moderately higher than the diagonal, meaning that the model is moderately better than random guessing, but still not very good at predicting performance.
 
 ## XGBoost
 ### Predicting Student Letter Grade
-![Top 20 Important Features in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=30%}
+
+::: {layout-ncol=3}
+![Top 20 Important Features](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=100%}
+
+![Confusion Matrix](graphs/xg_lettergrade_confusionmatrix.png){#fig-XG_L_CM width=100%}
+
+![ROC curve](graphs/xg_lettergrade_ROC.png){#fig-XG_L_ROC width=100%}
+:::
 
 As shown in @fig-fig-XG_L_IF, among the top 20 most important features to predict student letter grade by XGBoost, total alchohol consumption ranks the fifth. The most important feature is the number of classes failed, which is also considered to be very important by random forest. We can conclude that according to XGBoost, total alchohol consumption is an important feature to predict student letter grade.
 
@@ -396,33 +388,33 @@ The test error rate for this model is 0.6769, meaning that the model predicted 6
 
 Now, we present the confusion matrix to see where is the model failing at.
 
-![Confusion Matrix in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_confusionmatrix.png){#fig-XG_L_CM width=30%}
-
 From @fig-XG_L_CM, we can see the same problem in @fig-RF_L_CM: the model learns that it can perform better by just making less or no prediction of A-, A, and A+. Since this problem is not unique to random forest, it might be a common flaw in tree-based algorithms.
-
-![ROC curve in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_ROC.png){#fig-XG_L_ROC width=30%}
 
 From @fig-XG_L_ROC, we can see that the model is best at predicting grade F, which is consistant with the confusion matrix.
 
 ### Predicting Student Performance
-![Top 20 Important Features in Predicting Performance by XGBoost](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=30%}
+
+::: {layout-ncol=3}
+![Top 20 Important Features](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=100%}
+
+![Confusion Matrix](graphs/xg_performance_confusionmatrix.png){#fig-XG_P_CM width=100%}
+
+![ROC curve](graphs/xg_performance_ROC.png){#fig-XG_P_ROC width=100%}
+:::
+
 
 From @fig-XG_P_IF, we can see that the number of classes failed significantly outranks all other features to be the most important one while total alchohol consumption ranks only the ninth. Considering there are a total of 38 features, ranking the ninth still implies total alchohol consumption to be fairly important in predicting student letter grade.
 
 The test error rate is 0.2462, meaning that it predicted 24.62% of the data wrong in the test set. Comparing to the test error rate of 0.3385 by random forest on the same problem, XGBoost exhibits great improvement in performance.
 
-![Confusion Matrix in Predicting Performance by XGBoost](graphs/xg_performance_confusionmatrix.png){#fig-XG_P_CM width=30%}
-
 From the confusion matrix, we can see that the model is not just predicting less high performance (level 1) to improve performance. Although it is still biased towards low performance, it is a lot better than the random forest model as shown in @fig-RF_P_CM.
-
-![ROC curve in Predicting Performance by XGBoost](graphs/xg_performance_ROC.png){#fig-XG_P_ROC width=30%}
 
 Compared to the AUC of 0.74 by the random forest model, the XGBoost does not show much improvement with an AUC of 0.78.
 
 ## Neural Networks & Text Mining Results
 
 ### Qualitative Insights from Text Mining
-![Word Clouds of Student Backgrounds by Performance Level](graphs/word_cloud_good_vs_bad.png){#fig-wordclouds width=90%}
+![Word Clouds of Student Backgrounds by Performance Level](graphs/word_cloud_good_vs_bad.png){#fig-wordclouds width=50%}
 
 Because the corpus is built from `column_value` tokens (coded categorical levels such as `guardian_mother` and parental job labels), the word clouds should be interpreted as a frequency summary of background categories rather than natural-language themes. To keep definitions consistent with our classification task, we stratified students by high performance ($G3 \ge 14$) versus not high performance ($G3 < 14$). The two clouds share many dominant background tokens, suggesting that broad family context is relatively similar across groups, while any differences are more subtle and engagement-related (for example, extracurricular participation indicators like `activities_yes` vs `activities_no`). Overall, the word clouds are descriptive context rather than strong evidence of causal drivers.
 
@@ -465,6 +457,7 @@ Several limitations constrain interpretation. The observational, cross-sectional
 
 Future work could apply this pipeline to the mathematics dataset to test whether alcohol's association with performance generalizes across subjects. Extensions incorporating longitudinal designs, interaction effects, or richer behavioral measures may improve predictive power. Regarding alcohol specifically, `Talc` shows a small but consistent negative association with grades across models, though its effect is modest relative to academic predictors. The evidence does not support alcohol as a standalone screening indicator; rather, it should be treated as one component within a broader academic-risk profile.  
  
+{{< pagebreak >}}
 
 # Appendix
 ## Summary Statistics Tables and Selected Predictors Tables 
@@ -547,3 +540,33 @@ Future work could apply this pipeline to the mathematics dataset to test whether
 | absences            | ✓         |           |
 | Fjob_services       | ✓         |           |
 | reason_reputation   | ✓         |           |
+
+## Explanation of XGBoost Algorithm
+To understand XGBoost, we must first understand gradient boosting. Gradient boosting is an extension of the decision tree algorithm. It creates multiple decision trees and aggregate the results to obtain the final result. But unlike random forest, every decision tree gradient boosting creates depends on the results of the previous tree. The learning process starts from simply taking the mean of the dependent variable in the training set. Then, the residual error for each observation is calculated and a new decision tree is built to split the data until a certain number of leaves, which is preset as a parameter, is created. As the number of leaves is restricted, if more than one value is on the same leave, the value on that leaf will be replaced with their mean.
+
+The predictions of residuals obtained by a decision tree will be scaled by a factor between 0 to 1, named learning rate, to prevent the model from over-fitting to the training data. And the actual prediction of this new tree will be the prediction of the previous tree plus the product of learning rate and the predicted residuals from the new tree. Then, the new residual error is calculated and the same process is repeated until a certain number of decision trees, which is also a preset parameter, is created. The final result $\hat{Y}$ of gradient boosting is as follows:
+
+$$
+\hat{Y} = \bar{Y} + \gamma r_1 + \gamma r_2 + \cdots + \gamma r_n
+$$
+
+Where $\hat{Y}$ is the mean of training data, $r_i$ is the residual error predicted by each decision tree,
+and $\gamma$ is the learning rate.
+
+Now, we move on to XGBoost. XGBoost is an extension of the Gradient Boosting algorithm. Similar to Gradient Boosting, it creates multiple trees to predict the residual error made by the past prediction and aggregate them to produce the final result. The differences between the two algorithms are the condition of splitting data and create branches in the decision tree, the inclusion of a regularization parameter, and the inclusion of a pruning process.
+
+In Gradient Boosting, the condition to split data at each node in the decision tree is the one that decreases the variance of the data the most after split. While in XGBoost, the condition is the one that increases the similarity score of the data the most after split. The algorithm stops splitting the data after a certain number of times, which is a preset parameter. The similarity score of a leaf is calculated as:
+
+$$
+\text{Similarity Score} = \frac{(\sum \text{Residual})^2}{\text{Number of Residuals} + \lambda}
+$$
+
+Where $\gamma$ is a preset regularization parameter, ranging from 0 to positive infinity, that prevents the model from overfitting to the training data. After the split, the condition that maximizes the increase in similarity score is chosen. This parameter is also included when calculating the prediction result of each leaf:
+
+$$
+\text{predicted residual} = \frac{\sum \text{residual}}{\text{number of residual} + \lambda}
+$$
+
+Before the algorithm move on to build the next tree, XGBoost has an additional step of pruning. Starting from the last leaf created in the decision tree, if the increase in similarity score is smaller than gamma, which is a preset parameter, that split will be pruned, or eliminated from the decision tree. The process continues to the second last leaf in the decision tree until the increase in similarity score of one leaf is larger than gamma.
+
+Then, next tree is built based on the residual error of the prediction of this tree until a certain number of trees has been created. The final result is also calculated the same way as in Gradient Boosting: summing the base of prediction and all the products of predicted residuals and a learning rate.
