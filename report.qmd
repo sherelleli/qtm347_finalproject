@@ -1,5 +1,5 @@
 ---
-title: "Final Project Report"
+title: "Alcohol Consumption and Student Achievement: A Multi-Model Regression Comparison of Predictors of Final Grades"
 author: 
   - "Anushka Basu"
   - "Sherelle Li"
@@ -28,9 +28,7 @@ execute:
   message: false
 ---
 
-# 1 Introduction & Executive Summary 
-
-## Introduction
+# Introduction & Executive Summary 
 
 Alcohol consumption is a common feature of adolescent and young adult social life, and a substantial body of research has examined its relationship with academic outcomes. Prior studies consistently find that higher levels of alcohol use are associated with lower grades, increased absenteeism, and reduced academic engagement, though the magnitude of these effects varies once background and behavioral factors are taken into account. For example, DeSimone (2010) finds that binge drinking is linked to lower GPA after controlling for student characteristics, while Wolaver (2002) shows that alcohol use is strongly related to missed classes, which in turn affects academic performance ([DeSimone, 2010](https://doi.org/10.1016/j.jhealeco.2009.11.001); [Wolaver, 2002](https://www.jstor.org/stable/3083345)).
 
@@ -38,9 +36,15 @@ At the same time, alcohol consumption often co-occurs with other factors—such 
 
 This question is also personally relevant. Drinking as part of party and social culture is prevalent on many college campuses, including our own university, making it especially interesting to examine whether patterns observed in prior research are already evident earlier in students’ academic trajectories. Motivated by both the literature and lived experience, this project asks: **How does student alcohol consumption relate to academic performance, and does it meaningfully contribute to predicting final grades beyond prior academic performance and other behavioral and family factors?**
 
-(executive summary missing, need to have everyone finish their part first)
+## Executive Summary
 
-# 2 Data Description
+This analysis examines how alcohol consumption relates to academic performance among secondary school students, using a rich set of behavioral, social, demographic, and academic variables. After extensive cleaning, exploratory analysis, and feature engineering, multiple regression frameworks were applied—including baseline OLS, stepwise selection (AIC/BIC), and penalized models (Ridge, LASSO, Elastic Net)—to compare predictive accuracy, interpretability, and model stability.
+
+Across all models, academic history (especially prior failures), study behavior, and educational aspirations consistently emerged as the strongest predictors of final grades. Alcohol consumption, summarized through a combined `Talc` variable, showed a small negative association with performance, but its effect size was modest relative to core academic features. Importantly, penalized regression confirmed that alcohol contributes some predictive signal, while stepwise models demonstrated that it does not substantially improve model fit once dominant variables are included.
+
+Overall, results show that alcohol matters—but not nearly as much as academic effort, engagement, and prior achievement. Final grades are best explained by structural and behavioral factors rather than alcohol use alone, suggesting that alcohol should be interpreted as one component within a broader academic risk profile rather than a primary driver of academic outcomes.
+
+# Data Description
 
 ## Dataset Selection and Source
 This study uses the student performance dataset for the Portuguese language course (`student-por.csv`) from the UCI Machine Learning Repository. The Portuguese dataset was selected instead of the Mathematics course dataset because it contains a larger number of observations (n = 649 versus n = 395). The larger sample size improves statistical power and supports more stable estimation in multivariate regression and regularization-based models that rely on sufficient data density.
@@ -65,17 +69,12 @@ This domain-based organization clarifies how different types of predictors contr
 All variables were retained in formats appropriate for regression-based and machine-learning methods, with categorical predictors prepared for indicator-based encoding and ordinal variables preserved in their natural order for interpretability. The dataset is fully observed, internally consistent, and structured to support both explanatory modeling and out-of-sample prediction in later sections of the analysis.
 
 
-# 3 Data Cleaning and Preparation
+# Data Cleaning and Preparation
 
-## Data Loading and Initial Inspection
-The analysis begins with the `student-por.csv` dataset from the UCI Machine Learning Repository, which contains 649 observations and 33 variables. This dataset was chosen over the mathematics course dataset because of its larger sample size, which provides greater statistical stability for downstream modeling, especially for regularized methods and train–test evaluation. An initial inspection confirmed that the dataset contains no missing values, eliminating the need for imputation at any stage :contentReference[oaicite:0]{index=0}.
+## Data Loading and Outcome Definition
+The analysis uses the `student-por.csv` dataset from the UCI Machine Learning Repository (649 observations, 33 variables), chosen over the mathematics dataset for its larger sample size. Initial inspection confirmed no missing values and all variables within documented ranges. The primary outcome is `G3` (final Portuguese grade). First- and second-period grades (`G1`, `G2`) were removed from predictors due to high correlations with `G3` (r > 0.8 and 0.9, respectively), which would introduce target leakage rather than reveal behavioral or family predictors.
 
-Basic sanity checks were conducted immediately after loading the data. Variable types were inspected to distinguish numeric and categorical predictors, and summary statistics were reviewed to ensure that all variables fell within their documented ranges. For example, grades (`G1`, `G2`, `G3`) were confirmed to lie between 0 and 20, alcohol consumption variables (`Dalc`, `Walc`) between 1 and 5, and age between 15 and 22. No impossible or out-of-range values were detected, indicating that the raw data were internally consistent.
-
-## Outcome Definition and Leakage Prevention
-The primary outcome variable is `G3`, the final Portuguese course grade. A key data-cleaning decision was the explicit removal of `G1` and `G2` (first- and second-period grades) from the predictor set. These variables represent earlier measurements of the same underlying academic outcome and are mechanically highly correlated with `G3`. Correlation checks confirmed this concern, with correlations exceeding 0.8 for `G1–G3` and 0.9 for `G2–G3`. Including them would introduce severe target leakage, allowing models to predict final grades using prior grades rather than behavioral, social, or family factors. Removing `G1` and `G2` ensures that the analysis focuses on the substantive research question rather than trivial grade persistence :contentReference[oaicite:1]{index=1}.
-
-![Grade Correlations and Leakage Check](graphs/leakage_check.png){#fig-leakage width=75%}
+![Grade Correlations and Leakage Check](graphs/leakage_check.png){#fig-leakage width=60%}
 
 ## Variable Typing and Encoding Decisions
 All string-based variables were explicitly converted to categorical data types to reflect their qualitative nature and to prepare them for later encoding. Ordinal variables—such as `studytime`, `traveltime`, `Dalc`, `Walc`, `famrel`, `freetime`, `goout`, `health`, `Medu`, and `Fedu`—were intentionally kept as numeric rather than one-hot encoded. These variables have meaningful ordering, and treating them as numeric preserves interpretability of regression coefficients (e.g., moving from “low” to “high” consumption or education level).
@@ -88,8 +87,6 @@ The dataset includes two alcohol-related variables: weekday alcohol consumption 
 This engineered variable provides a single, interpretable measure of overall alcohol use while reducing reliance on two highly overlapping predictors. Importantly, `Dalc` and `Walc` were not immediately dropped, allowing later comparisons between separate and aggregated alcohol measures during exploratory analysis and model selection.
 
 ## Distribution Checks and Outlier Assessment
-Table X. Skewness of Numeric Variables in the Student Performance Dataset  
-(High skewness defined as |skew| > 1)
 
 ![Distributions of Key Variables with Potential Outliers](graphs/distributions.png){#fig-distributions width=75%}
 
@@ -97,45 +94,8 @@ Table X. Skewness of Numeric Variables in the Student Performance Dataset
 
 Before modeling, distributions of all numeric predictors were examined using summary statistics, skewness measures, histograms, and boxplots. Several variables—such as `failures`, `absences`, and alcohol measures—exhibited strong right skew. These patterns reflect real behavioral phenomena (e.g., most students have zero failures or low alcohol consumption) rather than data errors.
 
-No transformations were applied despite skewness. This decision was deliberate: the variables are bounded, interpretable on their original scales, and later modeling approaches (robust standard errors and penalized regression) are well-suited to handling non-normal predictors. Outliers identified via interquartile range methods were retained, as they represent genuine student experiences rather than noise.
+No transformations were applied despite skewness. This decision was deliberate: the variables are bounded, interpretable on their original scales, and later modeling approaches (robust standard errors and penalized regression) are well-suited to handling non-normal predictors. Outliers identified via interquartile range methods were retained, as they represent genuine student experiences rather than noise. (Summary statistics for all numeric and categorical variables are provided in Appendix Tables A1 and A2.)
 
-Table X. Summary Statistics for Numeric Variables
-
-| Statistic | age | Medu | Fedu | traveltime | studytime | failures | famrel | freetime | goout | Dalc | Walc | health | absences | G3 | Talc |
-|---------|-----|------|------|------------|-----------|----------|--------|----------|-------|------|------|--------|----------|----|------|
-| count | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 |
-| mean | 16.74 | 2.51 | 2.31 | 1.57 | 1.93 | 0.22 | 3.93 | 3.18 | 3.18 | 1.50 | 2.28 | 3.54 | 3.66 | 11.91 | 3.78 |
-| std | 1.22 | 1.13 | 1.10 | 0.75 | 0.83 | 0.59 | 0.96 | 1.05 | 1.18 | 0.92 | 1.28 | 1.45 | 4.64 | 3.23 | 1.99 |
-| min | 15.00 | 0.00 | 0.00 | 1.00 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.00 | 0.00 | 2.00 |
-| 25% | 16.00 | 2.00 | 1.00 | 1.00 | 1.00 | 0.00 | 4.00 | 3.00 | 2.00 | 1.00 | 1.00 | 2.00 | 0.00 | 10.00 | 2.00 |
-| 50% | 17.00 | 2.00 | 2.00 | 1.00 | 2.00 | 0.00 | 4.00 | 3.00 | 3.00 | 1.00 | 2.00 | 4.00 | 2.00 | 12.00 | 3.00 |
-| 75% | 18.00 | 4.00 | 3.00 | 2.00 | 2.00 | 0.00 | 5.00 | 4.00 | 4.00 | 2.00 | 3.00 | 5.00 | 6.00 | 14.00 | 5.00 |
-| max | 22.00 | 4.00 | 4.00 | 4.00 | 4.00 | 3.00 | 5.00 | 5.00 | 5.00 | 5.00 | 5.00 | 5.00 | 32.00 | 19.00 | 10.00 |
-
-Table Y. Summary Statistics for Categorical Variables
-
-| Variable | Count | Unique | Most Common Category | Frequency |
-|--------|-------|--------|----------------------|-----------|
-| school | 649 | 2 | GP | 423 |
-| sex | 649 | 2 | F | 383 |
-| address | 649 | 2 | U | 452 |
-| famsize | 649 | 2 | GT3 | 457 |
-| Pstatus | 649 | 2 | T | 569 |
-| Mjob | 649 | 5 | other | 258 |
-| Fjob | 649 | 5 | other | 367 |
-| reason | 649 | 4 | course | 285 |
-| guardian | 649 | 3 | mother | 455 |
-| schoolsup | 649 | 2 | no | 581 |
-| famsup | 649 | 2 | yes | 398 |
-| paid | 649 | 2 | no | 610 |
-| activities | 649 | 2 | no | 334 |
-| nursery | 649 | 2 | yes | 521 |
-| higher | 649 | 2 | yes | 580 |
-| internet | 649 | 2 | yes | 498 |
-| romantic | 649 | 2 | no | 410 |
-
-
-## Final Cleaned Dataset
 After removing leakage variables and adding the engineered `Talc` feature, the final cleaned dataset contains 649 observations and 32 variables. The cleaned dataset was saved for reproducibility and downstream modeling. At this stage, the data are internally consistent, free of leakage, and structured to support both interpretability-focused regression and more flexible predictive methods.
 
 # 4 Exploratory Data Analysis (EDA)
@@ -161,26 +121,22 @@ Alcohol consumption is generally low in the sample. Weekday drinking (`Dalc`) is
 When examining alcohol variables against `G3`, all three measures (`Dalc`, `Walc`, and `Talc`) show weak but consistently negative correlations with final grades. Visualizations suggest a slight downward trend in grades as alcohol consumption increases, but the effect size is modest, indicating that alcohol use alone is unlikely to be a dominant predictor of academic performance.
 
 ## Multicollinearity Assessment
-![Correlation Matrix of Numeric Predictors with G3](graphs/correlation_matrix.png){#fig-corr-matrix width=30%}
+![Correlation Matrix of Numeric Predictors with G3](graphs/correlation_matrix.png){#fig-corr-matrix width=40%}
 
-![Correlations Among Behavioral Predictors](graphs/behavioral_correlations.png){#fig-behavioral-corr width=30%}
+![Correlations Among Behavioral Predictors](graphs/behavioral_correlations.png){#fig-behavioral-corr width=40%}
 
 Correlation matrices among numeric predictors revealed notable clustering among behavioral variables, especially between `Dalc` and `Walc` and between parental education measures. Variance Inflation Factor (VIF) diagnostics showed that all VIF values were below conventional thresholds for severe multicollinearity, though alcohol variables had the highest values among predictors.
 
 These results indicate moderate redundancy but no immediate need to remove variables purely on multicollinearity grounds. Instead, they motivate the use of regularization techniques and, as an exploratory exercise, Principal Components Analysis to understand latent structure in the data.
 
 ## EDA Takeaways
-Overall, EDA suggests that:
-- Alcohol consumption is negatively related to academic performance, but with small effect sizes.
-- Academic history and educational aspirations dominate as predictors of final grades.
-- Family socioeconomic indicators play a meaningful but secondary role.
-- Behavioral and social variables are interrelated, creating moderate redundancy that must be handled carefully in modeling.
+Overall, EDA suggests that alcohol consumption is negatively related to academic performance but with small effect sizes, while academic history and educational aspirations dominate as predictors of final grades. Family socioeconomic indicators play a meaningful but secondary role, and behavioral and social variables are interrelated, creating moderate redundancy that must be handled carefully in modeling.
 
-These insights directly inform the modeling strategy that follows, including the choice to compare baseline linear models, stepwise selection, and penalized regression approaches while carefully controlling for confounding factors :contentReference[oaicite:4]{index=4}.
+These insights directly inform the modeling strategy that follows, including the choice to compare baseline linear models, stepwise selection, and penalized regression approaches while carefully controlling for confounding factors.
 
 
-# 5 Methodology
-## 5.1 Principal Components Analysis (PCA)
+# Methodology
+## Principal Components Analysis (PCA)
 
 To assess latent structure and redundancy among numeric predictors, Principal Components Analysis (PCA) was conducted as an exploratory dimensionality-reduction technique prior to predictive modeling. The goal of PCA in this analysis is not to replace original predictors in the main regression models, but to (i) diagnose multicollinearity, (ii) identify underlying behavioral and socioeconomic constructs, and (iii) inform later modeling choices.
 
@@ -195,25 +151,25 @@ PCA was fit using the full set of standardized numeric predictors. All component
 - A scree plot showing variance explained by each component  
 - A cumulative variance plot showing the proportion of total variance explained as components are added  
 
-![Scree Plot and Cumulative Variance Explained by PCA](graphs/pca_variance.png){#fig-pca-variance width=75%}
+![Scree Plot and Cumulative Variance Explained by PCA](graphs/pca_variance.png){#fig-pca-variance width=60%}
 
 To aid interpretation, component loadings for the first five principal components were examined and visualized using a heatmap. Loadings reflect the contribution of each original variable to a given component.
 
-![PCA Loadings for First Five Components](graphs/pca_loadings.png){#fig-pca-loadings width=30%}
+![PCA Loadings for First Five Components](graphs/pca_loadings.png){#fig-pca-loadings width=40%}
 
 Finally, a biplot of the first two principal components was constructed, with observations projected into PC space and colored by final grade (`G3`). Variable loadings were overlaid as vectors to visualize how predictors align with the dominant axes of variation.
 
-![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=30%}
+![PCA Biplot: PC1 vs PC2 Colored by Final Grade](graphs/pca_biplot.png){#fig-pca-biplot width=40%}
 
 ## 5.2 Linear,Stepwise, and Penalized Regression
 ### 5.2.1 Baseline Linear Regression
 
 As a benchmark for more complex models, a baseline linear regression was estimated to quantify the relationship between alcohol consumption, academic behavior, family background, and final academic performance. This model provides a transparent reference point for assessing both explanatory power and predictive performance.
 
-#### Train–Test Split
-To evaluate out-of-sample performance and avoid overfitting, the cleaned dataset was split into training and test sets using an 80/20 split. The training set contains 519 students (80%), and the test set contains 130 students (20%). The split was performed using a fixed random seed to ensure reproducibility. Importantly, the mean and standard deviation of the outcome variable (`G3`) are similar across the training and test sets, indicating that the split preserves the overall grade distribution and does not introduce systematic imbalance. All preprocessing steps that could introduce leakage—most notably feature scaling—were fit exclusively on the training data and then applied to the test data.
+Train–Test Split: To evaluate out-of-sample performance and avoid overfitting, the cleaned dataset was split into training and test sets using an 80/20 split. The training set contains 519 students (80%), and the test set contains 130 students (20%). The split was performed using a fixed random seed to ensure reproducibility. Importantly, the mean and standard deviation of the outcome variable (`G3`) are similar across the training and test sets, indicating that the split preserves the overall grade distribution and does not introduce systematic imbalance. All preprocessing steps that could introduce leakage—most notably feature scaling—were fit exclusively on the training data and then applied to the test data.
 
 #### Feature Encoding and Scaling
+
 The predictor matrix includes all variables except the outcome (`G3`)variable. Categorical predictors were converted to dummy variables using one-hot encoding with the first category dropped to avoid perfect collinearity. This resulted in a total of 40 predictors after encoding.
 
 Numeric predictors were standardized to have mean 0 and standard deviation 1. Standardization facilitates comparison of coefficient magnitudes and improves numerical stability, especially given the heterogeneous scales of variables such as absences, age, and alcohol consumption. The scaler was fit on the training data only and then applied to both training and test sets, ensuring no information from the test set leaked into model training.
@@ -227,10 +183,7 @@ The baseline model includes alcohol consumption measures (`Dalc`, `Walc`, and th
 
 To balance model interpretability and predictive performance, stepwise linear regression was applied using information-criterion–based feature selection. Starting from an intercept-only model, predictors were added sequentially using forward selection. At each step, the candidate variable that produced the greatest improvement in model fit was selected, as measured by either the Akaike Information Criterion (AIC) or the Bayesian Information Criterion (BIC).
 
-Both procedures were implemented on the training set only to avoid information leakage. All predictors were standardized prior to selection, and categorical variables were included through one-hot encoding. Two stepwise models were considered:
-
-- An AIC-based model, which prioritizes predictive accuracy and allows a larger number of predictors.
-- A BIC-based model, which applies a stronger penalty for model complexity and yields a more parsimonious specification.
+Both procedures were implemented on the training set only to avoid information leakage. All predictors were standardized prior to selection, and categorical variables were included through one-hot encoding. Two stepwise models were considered: An AIC-based model, which prioritizes predictive accuracy and allows a larger number of predictors. A BIC-based model, which applies a stronger penalty for model complexity and yields a more parsimonious specification.
 
 The stepwise approach provides a contrast to the full baseline regression by explicitly removing redundant or weak predictors, allowing clearer assessment of whether alcohol-related variables remain important once irrelevant covariates are excluded.
 
@@ -240,12 +193,7 @@ Penalized regression methods were used to address multicollinearity, high dimens
 
 The same training–test split (80/20) and preprocessing pipeline described earlier were applied. Predictors were standardized, categorical variables were one-hot encoded, and all preprocessing steps were fit on the training data only. The outcome variable is the final grade (`G3`), with intermediate grades excluded to prevent leakage.
 
-Three models were estimated:
-- Ridge regression (L2 penalty), which shrinks correlated coefficients toward each other.
-- LASSO regression (L1 penalty), which performs shrinkage and variable selection by setting some coefficients to zero.
-- Elastic Net, which combines L1 and L2 penalties to balance sparsity and stability.
-
-The regularization parameter for each model was selected via cross-validation on the training set by minimizing mean squared error. Final models were refit using the optimal penalty and evaluated on the held-out test set.
+Three models were estimated: First, a Ridge regression (L2 penalty), which shrinks correlated coefficients toward each other. Second, LASSO regression (L1 penalty), which performs shrinkage and variable selection by setting some coefficients to zero. Lastly the Elastic Net, which combines L1 and L2 penalties to balance sparsity and stability. The regularization parameter for each model was selected via cross-validation on the training set by minimizing mean squared error. Final models were refit using the optimal penalty and evaluated on the held-out test set.
 
 ## 5.3 Random Forest
 After using linear regression to predict student grade as a continuous variable, we used random forest to classify their letter grade (A, B, C, etc.,) and performance (high-performing and low-performning). In Portugal, universities use a 0-20 scale grading system, which can be translated to the letter grade system used in the US as follows.
@@ -265,9 +213,7 @@ To give our readers a brief overview of the random forest algorithm, random fore
 
 A random forest algorithm creates multiple decision trees and aggregate the result of the trees to obtain the final result. It randomly selects a certain number of observations and a certain number of features or variables from the original dataset and then train a decision tree based on each selection. The aggregation of multiple decision trees based on randomly sampled data makes the model less sensitive to subtle changes in the training data.
 
-After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at.
-
-We trained this model in python using the sklearn package.
+After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at. We trained this model in python using the sklearn package.
 
 ## 5.4 XGBoost
 Random forest is a very basic tree-based machine learning algorithm and we do not expect it to perform very well. Therefore, we also used XGBoost, a more sophisticated tree-based algorithm, to classify the letter grade and performance of students.
@@ -313,173 +259,46 @@ To explore non-linear predictive capabilities and extract qualitative context fr
 
 **Neural Networks:** We formulated a binary classification task to predict high performance (defined as $G3 \ge 14$, corresponding to A grades). We trained a Multi-Layer Perceptron (MLP) classifier with two hidden layers (64 and 32 units, ReLU activation) and compared it against a baseline decision tree (max depth 5). To monitor stability and overfitting, we tracked the training and validation log loss over 60 epochs.
 
-# 6 Results
+# Results
 
-## 6.1 Principal Components Analysis
+## Principal Components Analysis
 
-### Variance Explained
 The PCA results indicate that variance is distributed across multiple dimensions rather than dominated by a single factor. The first principal component (PC1) explains approximately 17.4% of the total variance, followed by PC2 (14.4%) and PC3 (10.2%). The first five components together explain roughly 59% of total variance, while approximately 8–9 components are required to exceed 80% cumulative variance (Figure @fig-pca-variance).
 
 This pattern suggests moderate redundancy among predictors but no extreme collinearity that would collapse the data into one or two dominant dimensions.
 
-### Component Interpretation
-Inspection of loadings reveals interpretable latent constructs:
-
-- **PC1 (17.4% variance): Social and Alcohol Behavior**  
-  High positive loadings on `Walc`, `Dalc`, and `goout` indicate that PC1 captures a social activity and alcohol consumption dimension.
-
-- **PC2 (14.4% variance): Parental Socioeconomic Status**  
-  Strong positive loadings on `Medu` and `Fedu` suggest that PC2 represents family socioeconomic background through parental education.
-
-- **PC3 (10.2% variance): Family and Attendance Context**  
-  Positive loadings on `famrel` and `freetime`, with a negative loading on `absences`, indicate a contrast between family stability/leisure time and attendance problems.
-
-- **PC4 (8.9% variance): Academic Risk and Age**  
-  High loadings on `age` and `failures` reflect students who are older and have experienced prior academic setbacks.
-
-- **PC5 (8.2% variance): Health and Study Trade-offs**  
-  Strong positive loading on `health` and negative loading on `studytime` and `goout` suggest a health-related dimension distinct from academic effort.
+Inspection of loadings reveals interpretable latent constructs: The principal components reveal interpretable latent constructs. **PC1 (17.4% variance)** reflects a social–alcohol behavior dimension, driven by high loadings on `Walc`, `Dalc`, and `goout`. **PC2 (14.4% variance)** captures parental socioeconomic background through strong contributions from `Medu` and `Fedu`. **PC3 (10.2% variance)** represents a family and attendance dynamic, contrasting positive loadings on `famrel` and `freetime` with a negative loading on `absences`. **PC4 (8.9% variance)** reflects an academic risk profile associated with older age and prior failures, while **PC5 (8.2% variance)** distinguishes health status from academic effort, with high positive loading on `health` and negative loading on `studytime` and `goout`.
 
 These patterns are visualized in the loading heatmap (Figure @fig-pca-loadings) and biplot (Figure @fig-pca-biplot).
 
-### Relationship to Academic Performance
 Coloring the PCA biplot by `G3` reveals no sharp separation of high- and low-performing students along PC1 or PC2. This suggests that while social/alcohol behavior and parental SES are meaningful dimensions of variation, they do not independently determine final grades. Instead, academic performance appears to vary along multiple axes simultaneously, reinforcing the need for multivariate regression rather than reliance on a small number of composite scores.
 
 ### Implications for Modeling
-The PCA results support three key decisions:
-
-1. Behavioral and alcohol variables cluster together, confirming redundancy between `Dalc`, `Walc`, and related social measures.
-2. Parental education forms a distinct latent construct, validating its treatment as a core control variable.
-3. Despite moderate correlations, no severe multicollinearity is present, consistent with earlier VIF diagnostics.
+The PCA results support three key decisions: 1. Behavioral and alcohol variables cluster together, confirming redundancy between `Dalc`, `Walc`, and related social measures. 2. Parental education forms a distinct latent construct, validating its treatment as a core control variable. 3. Despite moderate correlations, no severe multicollinearity is present, consistent with earlier VIF diagnostics.
 
 Given these findings, PCA components are not used as primary predictors in the main models. Retaining original variables preserves interpretability for the research question, while later penalized regression methods handle redundancy more directly. PCA is therefore used as a diagnostic and interpretive tool rather than a replacement for the original feature set.
 
-## 6.2 Linear,Stepwise, and Penalized Regression
-### 6.2.1 Baseline Linear Regression
+## Linear, Stepwise, and Penalized Regression
 
-#### Overall Model Performance
-The baseline linear regression explains a meaningful share of variation in final grades. Using the training set, the model achieves an R² of 0.387 and an adjusted R² of 0.338 with 40 predictors. The overall F-test is highly significant (p < 0.001), indicating that the full set of predictors jointly contributes to explaining final academic performance. This model serves as a comprehensive benchmark against which more structured and parsimonious models are evaluated.
+**Baseline Linear Regression.** The baseline OLS model achieves an R² of 0.387 and adjusted R² of 0.338 with 40 predictors (F-test p < 0.001). None of the alcohol consumption measures are statistically significant once controls are included: `Dalc` (β = -0.208, p = 0.302), `Walc` (β = +0.040, p = 0.808), and `Talc` (β = -0.073, p = 0.272). This lack of significance reflects multicollinearity among alcohol variables and suggests alcohol consumption does not have a strong independent association with final grades. Academic history and aspirations dominate the results—past failures are the strongest negative predictor, while study effort and plans for higher education are positively associated with achievement (see Appendix Table A4 for significant predictors). These findings motivate stepwise selection and penalized regression to address multicollinearity.
 
-#### Alcohol Consumption Effects
+**Stepwise Regression.** The AIC-based model retained 12 predictors, while the BIC-based model retained 7 (see Appendix Table A5). Both models retained failures, school_MS, higher_yes, Talc, schoolsup_yes, studytime, and health. Notably, total alcohol consumption (Talc) was retained in both models, whereas `Dalc` and `Walc` were excluded individually. Model fit comparison shows the AIC model (Adjusted R² ≈ 0.345) slightly outperformed the full baseline (Adjusted R² ≈ 0.338) despite using far fewer predictors, while the BIC model (Adjusted R² ≈ 0.326) achieved substantial parsimony with modest reduction in fit. In the AIC model, Talc shows a statistically significant negative coefficient—contrasting with the full baseline where alcohol variables were not significant due to multicollinearity. This supports the conclusion that alcohol consumption contributes modestly but non-negligibly to predicting academic performance when the model is restricted to informative predictors.
 
-Table X reports the standardized coefficients for alcohol-related variables in the baseline model.
-
-| Variable | Coefficient | Robust SE | t-stat | p-value |
-|---------|-------------|-----------|--------|---------|
-| Dalc | -0.208 | 0.201 | -1.03 | 0.302 |
-| Walc | +0.040 | 0.163 | +0.24 | 0.808 |
-| Talc | -0.073 | 0.066 | -1.10 | 0.272 |
-
-None of the alcohol consumption measures are statistically significant at conventional levels once academic, family, demographic, and social controls are included. Weekday alcohol consumption (`Dalc`) exhibits the expected negative association with final grades, while weekend alcohol consumption (`Walc`) shows a small positive coefficient; however, both effects are imprecisely estimated.
-
-The lack of significance is consistent with moderate multicollinearity among `Dalc`, `Walc`, and the constructed total alcohol measure (`Talc`). Including all three simultaneously inflates standard errors and limits the ability to isolate individual alcohol effects. Substantively, these results suggest that alcohol consumption does not have a strong independent association with final grades in the presence of richer academic and contextual controls.
-
-#### Significant Predictors of Final Grade
-
-Table Y summarizes predictors that are statistically significant at the 5% level in the baseline regression.
-
-| Variable | Coefficient | p-value | Interpretation |
-|---------|-------------|---------|----------------|
-| failures | -0.884 | <0.001 | Each SD increase in past failures is associated with a 0.88-point decrease in final grade |
-| higher_yes | +1.687 | <0.001 | Aspiring to higher education is associated with a 1.7-point increase in final grade |
-| schoolsup_yes | -1.603 | <0.001 | Receiving school support is associated with a 1.6-point decrease (likely reverse causation) |
-| school_MS | -1.394 | <0.001 | MS school students score about 1.4 points lower than GP students |
-| Fjob_services | -1.099 | 0.030 | Father working in services is associated with a 1.1-point decrease relative to at_home |
-| studytime | +0.300 | 0.011 | Each SD increase in study time corresponds to a 0.3-point increase in final grade |
-| health | -0.328 | 0.013 | Better self-reported health is associated with lower grades (likely confounded) |
-
-Academic history and aspirations dominate the baseline results. Past failures are the strongest negative predictor, while study effort and plans for higher education are positively associated with achievement. The negative coefficient on school support likely reflects reverse causation, as support is typically provided to students already experiencing academic difficulty.
-
-#### Summary of Baseline Findings
-Overall, the baseline linear regression indicates that academic behavior and prior academic difficulty play a substantially larger role in explaining final grades than alcohol consumption. While alcohol variables show the expected negative direction, their effects are small and statistically indistinguishable from zero once broader behavioral and socioeconomic factors are taken into account. These findings motivate the use of stepwise selection and penalized regression methods to address multicollinearity and assess whether alcohol consumption contributes meaningfully to prediction in more parsimonious models.
-
-### 6.2.2 Stepwise Regression Results
-
-#### Selected Features
-
-Table @tbl-stepwise-features summarizes the predictors retained by each stepwise procedure.
-
-| Variable            | AIC Model | BIC Model |
-|---------------------|-----------|-----------|
-| failures            | ✓         | ✓         |
-| school_MS           | ✓         | ✓         |
-| higher_yes          | ✓         | ✓         |
-| Talc                | ✓         | ✓         |
-| schoolsup_yes       | ✓         | ✓         |
-| studytime           | ✓         | ✓         |
-| health              | ✓         | ✓         |
-| Fedu                | ✓         |           |
-| reason_other        | ✓         |           |
-| absences            | ✓         |           |
-| Fjob_services       | ✓         |           |
-| reason_reputation   | ✓         |           |
-
-: Selected predictors under AIC and BIC stepwise regression {#tbl-stepwise-features}
-
-The AIC-based model retained 12 predictors, while the BIC-based model retained 7, reflecting BIC’s stronger penalty for complexity. Notably, total alcohol consumption (Talc) was retained in both models, whereas weekday (Dalc) and weekend (Walc) alcohol variables were excluded individually.
-
-#### Model Fit Comparison
-
-- Full baseline model: Adjusted R² ≈ 0.338 with 40 predictors  
-- AIC-selected model: Adjusted R² ≈ 0.345 with 12 predictors  
-- BIC-selected model: Adjusted R² ≈ 0.326 with 7 predictors  
-
-Despite using far fewer predictors, the AIC-selected model slightly outperformed the full model in adjusted R², indicating improved efficiency without loss of explanatory power. The BIC model showed a modest reduction in fit but achieved substantial parsimony.
-
-#### Coefficient Patterns (AIC Model)
-
-Key coefficients from the AIC-selected model indicate:
-
-- failures: large negative and highly significant effect, remaining the strongest predictor of final grade.
-- studytime: positive and statistically significant association with G3.
-- higher_yes: strong positive effect, indicating higher grades among students intending to pursue higher education.
-- schoolsup_yes: negative association, consistent with school support being targeted toward struggling students.
-- Talc: statistically significant negative coefficient, suggesting that higher overall alcohol consumption is associated with lower final grades once irrelevant predictors are removed.
-
-These results contrast with the full baseline regression, where alcohol variables were not statistically significant due to multicollinearity and overparameterization.
-
-Overall, stepwise selection supports the conclusion that alcohol consumption contributes modestly but non-negligibly to predicting academic performance, particularly when the model is restricted to the most informative predictors.
-
-### 6.2.3 Penalized Regression Results
-
-Figure @fig-lasso-path shows the LASSO coefficient paths as a function of the regularization parameter α (log scale). As α increases, coefficients shrink toward zero, with the dashed red line indicating the cross-validated optimal value (α ≈ 0.098).
+**Penalized Regression.** Figure @fig-lasso-path shows the LASSO coefficient paths as a function of the regularization parameter α (log scale). As α increases, coefficients shrink toward zero, with the dashed red line indicating the cross-validated optimal value (α ≈ 0.098).
 
 ![LASSO Coefficient Paths](graphs/lasso_coefficient_paths.png){#fig-lasso-path width=30%}
 
-The coefficient paths highlight a clear hierarchy of predictor importance. Academic difficulty (`failures`) remains large and negative across a wide range of α values and is among the last coefficients to be shrunk to zero, indicating strong and stable predictive power. School context and educational aspirations (`school_MS`, `higher_yes`) also persist under substantial regularization, reinforcing their central role in explaining final grades. Study behavior (`studytime`) shows a smaller but consistently positive contribution.
-
-Total alcohol consumption (`Talc`) is retained at the optimal penalty with a negative coefficient. Although its magnitude is modest relative to academic predictors, its persistence suggests that overall alcohol use contributes weakly but consistently to predicting lower grades once irrelevant variables are penalized away. In contrast, weekday and weekend alcohol measures (`Dalc`, `Walc`) shrink to zero early and are not retained at the optimal α, confirming redundancy among alcohol variables and supporting the use of a combined measure.
-
-Table 6.4.1 summarizes the predictors retained at the optimal penalty across penalized models.
-
-| Predictor | Ridge | LASSO | Elastic Net |
-|----------|:-----:|:-----:|:-----------:|
-| failures | ✓ | ✓ | ✓ |
-| studytime | ✓ | ✓ | ✓ |
-| higher_yes | ✓ | ✓ | ✓ |
-| school_MS | ✓ | ✓ | ✓ |
-| schoolsup_yes | ✓ | ✓ | ✓ |
-| health | ✓ | ✓ | ✓ |
-| Medu / Fedu | ✓ | ✓ | ✓ |
-| Talc | ✓ | ✓ | ✓ |
-| Dalc | ✓ | ✗ | ✗ |
-| Walc | ✓ | ✗ | ✗ |
-
-Ridge regression retains all predictors but heavily shrinks correlated coefficients, particularly for weekday and weekend alcohol consumption. LASSO and Elastic Net instead exclude `Dalc` and `Walc` while retaining `Talc`, yielding a more parsimonious and interpretable representation of alcohol use.
+The coefficient paths highlight a clear hierarchy of predictor importance. Academic difficulty (`failures`) remains large and negative across a wide range of α values and is among the last coefficients to be shrunk to zero, indicating strong and stable predictive power. School context and educational aspirations (`school_MS`, `higher_yes`) also persist under substantial regularization, reinforcing their central role in explaining final grades. Study behavior (`studytime`) shows a smaller but consistently positive contribution. Total alcohol consumption (`Talc`) is retained at the optimal penalty with a negative coefficient. Although its magnitude is modest relative to academic predictors, its persistence suggests that overall alcohol use contributes weakly but consistently to predicting lower grades once irrelevant variables are penalized away. In contrast, weekday and weekend alcohol measures (`Dalc`, `Walc`) shrink to zero early and are not retained at the optimal α, confirming redundancy among alcohol variables and supporting the use of a combined measure (see Appendix Table A3 for predictors retained across penalized models). Ridge regression retains all predictors but heavily shrinks correlated coefficients, while LASSO and Elastic Net exclude `Dalc` and `Walc` while retaining `Talc`, yielding a more parsimonious representation of alcohol use.
 
 Figure @fig-penalized-performance compares test-set performance across penalized models.
 
-![Test Performance of Penalized Regression Models](graphs/penalized_regression_comparison.png){#fig-penalized-performance width=75%}
-
-All penalized models achieve comparable or slightly improved test RMSE relative to the unpenalized baseline, with reduced variance and greater stability. Differences across Ridge, LASSO, and Elastic Net are small, indicating that regularization primarily improves robustness rather than substantially increasing predictive accuracy.
-
-Overall, penalized regression confirms that academic history, study behavior, and educational aspirations dominate prediction of final grades. Alcohol consumption enters only through total consumption and with a comparatively small effect, indicating a secondary role once multicollinearity and overfitting are addressed.
+All penalized models achieve comparable or slightly improved test RMSE relative to the unpenalized baseline, with reduced variance and greater stability. Differences across Ridge, LASSO, and Elastic Net are small, indicating that regularization primarily improves robustness rather than substantially increasing predictive accuracy. Overall, penalized regression confirms that academic history, study behavior, and educational aspirations dominate prediction of final grades. Alcohol consumption enters only through total consumption and with a comparatively small effect, indicating a secondary role once multicollinearity and overfitting are addressed.
 
 ### Model Evaluation and Comparison
 
 All models are evaluated on the same held-out test set using **test RMSE**, **test R²**, and **test MAE**, with lower RMSE/MAE and higher R² indicating better generalization performance. Model complexity is measured by the number of retained features. The comparison focuses on how different modeling choices affect predictive performance and the accuracy–interpretability trade-off.
 
-![Model performance and complexity comparison](graphs/penalized_regression_comparison.png){#fig-model-performance width=85%}
+![Model performance and complexity comparison](graphs/penalized_regression_comparison.png){#fig-model-performance width=40%}
 
 Table 8.1 reports the full set of performance metrics for each regression model.
 
@@ -528,8 +347,8 @@ Importantly, although Talc is consistently selected, **including alcohol consump
 
 Overall, the model evaluation supports a nuanced conclusion: alcohol consumption is not irrelevant—its negative association with grades is stable across models—but its role is limited compared to core academic factors, and it does not substantially improve prediction on its own.
 
-## 6.3 Random Forest
-### 6.3.1 Predicting Student Letter Grade
+## Random Forest
+### Predicting Student Letter Grade
 ![Top 20 Important Features in Predicting Letter Grade by RF](graphs/RF_lettergrade_importantfeatures.png){#fig-RF_L_IF width=30%}
 
 As we can see in @fig-RF_L_IF, total alchohal consumption is the most important feature in predicting a student's letter grade. It is slightly more important than the number of classes failed in the past and significantly more important than any other features. This result strongly confirms our hypothesis that total alchohol consumption contributes well to the prediction of students' grade.
@@ -548,7 +367,7 @@ Finally, we present the ROC curve for this model.
 
 As we can see in @fig-RF_L_ROC, the model performs the best when predicting F and A+ as their curves have the highest AUC score.
 
-### 6.3.2 Predicting Student Performance
+### Predicting Student Performance
 ![Top 20 Important Features in Predicting Performance by RF](graphs/RF_performance_importantfeatures.png){#fig-RF_P_IF width=30%}
 
 As we can see in @fig-RF_P_IF, when predicting student performance (high or low), the most important feature is the education of the mother, which significantly outperformed all other predictors, followed by total alchohol consumption. The number of classes failed, which is the second important feature in predicting student letter grade, now ranks the fourth. Therefore, we can still conclude that total alchohol consumption is an important predictor of student performance.
@@ -567,8 +386,8 @@ Finally, we present the ROC curve for this model.
 
 From @fig-RF_P_ROC, we can see that the ROC curve is moderately higher than the diagonal, meaning that the model is moderately better than random guessing, but still not very good at predicting performance.
 
-## 6.4 XGBoost
-### 6.4.1 Predicting Student Letter Grade
+## XGBoost
+### Predicting Student Letter Grade
 ![Top 20 Important Features in Predicting Letter Grade by XGBoost](graphs/xg_lettergrade_importantfeatures.png){#fig-XG_L_IF width=30%}
 
 As shown in @fig-fig-XG_L_IF, among the top 20 most important features to predict student letter grade by XGBoost, total alchohol consumption ranks the fifth. The most important feature is the number of classes failed, which is also considered to be very important by random forest. We can conclude that according to XGBoost, total alchohol consumption is an important feature to predict student letter grade.
@@ -585,7 +404,7 @@ From @fig-XG_L_CM, we can see the same problem in @fig-RF_L_CM: the model learns
 
 From @fig-XG_L_ROC, we can see that the model is best at predicting grade F, which is consistant with the confusion matrix.
 
-### 6.4.2 Predicting Student Performance
+### Predicting Student Performance
 ![Top 20 Important Features in Predicting Performance by XGBoost](graphs/xg_performance_importantfeatures.png){#fig-XG_P_IF width=30%}
 
 From @fig-XG_P_IF, we can see that the number of classes failed significantly outranks all other features to be the most important one while total alchohol consumption ranks only the ninth. Considering there are a total of 38 features, ranking the ninth still implies total alchohol consumption to be fairly important in predicting student letter grade.
@@ -600,30 +419,33 @@ From the confusion matrix, we can see that the model is not just predicting less
 
 Compared to the AUC of 0.74 by the random forest model, the XGBoost does not show much improvement with an AUC of 0.78.
 
-## 6.5 Neural Networks & Text Mining Results
+## Neural Networks & Text Mining Results
 
-### 6.5.1 Qualitative Insights from Text Mining
+### Qualitative Insights from Text Mining
 ![Word Clouds of Student Backgrounds by Performance Level](graphs/word_cloud_good_vs_bad.png){#fig-wordclouds width=90%}
 
 Because the corpus is built from `column_value` tokens (coded categorical levels such as `guardian_mother` and parental job labels), the word clouds should be interpreted as a frequency summary of background categories rather than natural-language themes. To keep definitions consistent with our classification task, we stratified students by high performance ($G3 \ge 14$) versus not high performance ($G3 < 14$). The two clouds share many dominant background tokens, suggesting that broad family context is relatively similar across groups, while any differences are more subtle and engagement-related (for example, extracurricular participation indicators like `activities_yes` vs `activities_no`). Overall, the word clouds are descriptive context rather than strong evidence of causal drivers.
 
-### 6.5.2 Classification Performance (Neural Network vs Tree)
+### Classification Performance (Neural Network vs Tree)
 We compared the Multi-Layer Perceptron (MLP) against a standard Decision Tree to test whether non-linear complexity improves prediction for high-performing students. On the held-out test set, both the Neural Network and the Decision Tree achieved an accuracy of **0.7000**, which is approximately the majority-class baseline in this split. This suggests that, under the $G3 \ge 14$ threshold and without prior grade history (`G1`, `G2`), the available demographic and background variables provide limited signal for distinguishing top-performing students. For this reason, accuracy alone is not sufficient, and confusion-matrix and ROC-style diagnostics are needed to evaluate minority-class performance.
 
-### 6.5.3 Training Dynamics
+### Training Dynamics
 ![Neural Network Training vs Validation Loss](graphs/nn_loss_curve.png){#fig-loss-curve width=30%}
 
 The loss curve shows validation loss flattening (and even slightly increasing) while training loss continues to decrease. This divergence indicates that the model began overfitting the training noise relatively quickly. The inability of the validation loss to decrease significantly below its starting point confirms that the demographic features lack strong signals for this specific high-performance threshold ($G3 \ge 14$).
 
-### 6.5.4 Feature Importance (Bagged Tree)
+### Feature Importance (Bagged Tree)
 To verify the role of alcohol, we analyzed the feature importance from the bagged tree model.
 
 ![Top 10 Features (Bagged Tree)](graphs/part3_importance.png){#fig-part3-importance width=30%}
 
 As shown in Figure @fig-part3-importance, alcohol consumption (`Talc`) does not appear in the top 10 predictors, confirming it is a weak signal compared to failures, absences, and parental education.
 
-# 7 Conclusion
+# Conclusion
 ## Linear, Stepwise, and Penalized Regression
+Across all regression approaches, three consistent findings emerge. First, academic history and behavior—particularly past failures, study time, and educational aspirations—are the dominant predictors of final grade. These variables are statistically strong, stable across model specifications, and central to out-of-sample predictive accuracy. Second, model comparison reinforces that no single regression model drastically outperforms the rest in predictive performance; test RMSE values fall within a narrow range (~2.78–2.88), with Elastic Net performing best by a small margin. Penalized regression improves robustness and generalization relative to the full OLS baseline, while stepwise models improve interpretability by removing redundant predictors.
+
+Finally, alcohol consumption shows a consistent but secondary signal. Total consumption (Talc) is retained across nearly all models, its coefficient remains negative, and its effect persists after accounting for academic, family, demographic, and behavioral controls. However, effect sizes are small relative to core academic predictors, and including alcohol variables does not meaningfully change overall predictive accuracy. Taken together, the regression results suggest that alcohol matters—but as a modest contributor alongside more powerful academic drivers rather than as a primary determinant of performance.
 
 ## Tree Based Models
 We used random forest and XGboost to predict the letter grade and the performance of students. When predicting letter grade, both random forest and XGboost consider total alchohol consumption to be one of the most important features in prediction. Their test error rate and AUC scores when predicting each grade are very similar to each other, indicating similar and moderately good model performance.
@@ -632,16 +454,96 @@ When predicting student performance, random forest consider total alchohol consu
 
 Overall, we can conclude that total alchohol consumption is one of the most important predictors of student letter grade and performance according to random forest and XGBoost.
 
-For limitations, both models are biased towards the class with more observations (lower letter grade and low performance) and forcing them to balance the prediction would increase test error rate, which is probably the shared flaw of tree-based classification algorithms. Therefore, tree-based classification algorithms might not be the best technique when the dataset is unbalanced.
-
-Also, we used random forest and XGBoost for classification, making it impossible to compare their performance with our linear regression model. Since random forest and XGBoost can also be applied in regression (although it is less common), future research can use the regression version of the two algorithms and compare their performance with that of linear regression.
+For limitations, both models are biased towards the class with more observations (lower letter grade and low performance) and forcing them to balance the prediction would increase test error rate, which is probably the shared flaw of tree-based classification algorithms. Therefore, tree-based classification algorithms might not be the best technique when the dataset is unbalanced. In addition, we used random forest and XGBoost for classification, making it impossible to compare their performance with our linear regression model. Since random forest and XGBoost can also be applied in regression (although it is less common), future research can use the regression version of the two algorithms and compare their performance with that of linear regression.
 
 ## Neural Networks & Text Mining
 Overall, the neural network performed identically to the shallow decision tree in this split, with neither model managing to outperform the majority-class baseline. The loss dynamics highlight that while the network began to learn, it quickly plateaued, suggesting that demographic variables alone are insufficient to reliably identify "A-student" performance. Since the neural network did not demonstrate superior accuracy here, its "black box" nature makes it less attractive than transparent models for this specific task.
 
 
-# 8 Limitations and Future Directions
+## Limitations and Future Directions
+Several limitations constrain interpretation. The observational, cross-sectional design precludes causal inference—alcohol's association with lower grades may reflect unmeasured confounders such as stress or disengagement. Self-reported predictors (alcohol use, study time, health) introduce potential bias, and the single-subject outcome may be influenced by instructor-specific factors. Modest predictive accuracy (test R² ≈ 0.20) suggests key determinants remain unmeasured.
 
-Connecting back to alcohol use, the role of alcohol depends on the model family. In the regression-based models (OLS/stepwise/penalized), the Talc coefficient is consistently negative but small relative to dominant academic predictors such as past failures, study time, and aspirations, suggesting alcohol contributes only a modest secondary signal after controls. In contrast, tree-based models may rank Talc highly in feature importance because importance measures reflect split utility in that model and can be influenced by correlation with other behavioral variables (and by known biases in impurity-based importance). Taken together, these results suggest alcohol is not irrelevant, but it is unlikely to be a reliable standalone screening variable. A more defensible approach is to treat alcohol as one feature within a broader risk profile that also includes engagement and academic-history indicators.
+Future work could apply this pipeline to the mathematics dataset to test whether alcohol's association with performance generalizes across subjects. Extensions incorporating longitudinal designs, interaction effects, or richer behavioral measures may improve predictive power. Regarding alcohol specifically, `Talc` shows a small but consistent negative association with grades across models, though its effect is modest relative to academic predictors. The evidence does not support alcohol as a standalone screening indicator; rather, it should be treated as one component within a broader academic-risk profile.  
+ 
 
+# Appendix
+## Summary Statistics Tables and Selected Predictors Tables 
 
+**Table A1. Summary Statistics for Numeric Variables**
+
+| Statistic | age | Medu | Fedu | traveltime | studytime | failures | famrel | freetime | goout | Dalc | Walc | health | absences | G3 | Talc |
+|---------|-----|------|------|------------|-----------|----------|--------|----------|-------|------|------|--------|----------|----|------|
+| count | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 | 649.00 |
+| mean | 16.74 | 2.51 | 2.31 | 1.57 | 1.93 | 0.22 | 3.93 | 3.18 | 3.18 | 1.50 | 2.28 | 3.54 | 3.66 | 11.91 | 3.78 |
+| std | 1.22 | 1.13 | 1.10 | 0.75 | 0.83 | 0.59 | 0.96 | 1.05 | 1.18 | 0.92 | 1.28 | 1.45 | 4.64 | 3.23 | 1.99 |
+| min | 15.00 | 0.00 | 0.00 | 1.00 | 1.00 | 0.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.00 | 0.00 | 2.00 |
+| 25% | 16.00 | 2.00 | 1.00 | 1.00 | 1.00 | 0.00 | 4.00 | 3.00 | 2.00 | 1.00 | 1.00 | 2.00 | 0.00 | 10.00 | 2.00 |
+| 50% | 17.00 | 2.00 | 2.00 | 1.00 | 2.00 | 0.00 | 4.00 | 3.00 | 3.00 | 1.00 | 2.00 | 4.00 | 2.00 | 12.00 | 3.00 |
+| 75% | 18.00 | 4.00 | 3.00 | 2.00 | 2.00 | 0.00 | 5.00 | 4.00 | 4.00 | 2.00 | 3.00 | 5.00 | 6.00 | 14.00 | 5.00 |
+| max | 22.00 | 4.00 | 4.00 | 4.00 | 4.00 | 3.00 | 5.00 | 5.00 | 5.00 | 5.00 | 5.00 | 5.00 | 32.00 | 19.00 | 10.00 |
+
+**Table A2. Summary Statistics for Categorical Variables**
+
+| Variable | Count | Unique | Most Common Category | Frequency |
+|--------|-------|--------|----------------------|-----------|
+| school | 649 | 2 | GP | 423 |
+| sex | 649 | 2 | F | 383 |
+| address | 649 | 2 | U | 452 |
+| famsize | 649 | 2 | GT3 | 457 |
+| Pstatus | 649 | 2 | T | 569 |
+| Mjob | 649 | 5 | other | 258 |
+| Fjob | 649 | 5 | other | 367 |
+| reason | 649 | 4 | course | 285 |
+| guardian | 649 | 3 | mother | 455 |
+| schoolsup | 649 | 2 | no | 581 |
+| famsup | 649 | 2 | yes | 398 |
+| paid | 649 | 2 | no | 610 |
+| activities | 649 | 2 | no | 334 |
+| nursery | 649 | 2 | yes | 521 |
+| higher | 649 | 2 | yes | 580 |
+| internet | 649 | 2 | yes | 498 |
+| romantic | 649 | 2 | no | 410 |
+
+**Table A3. Predictors Retained at Optimal Penalty Across Penalized Models**
+
+| Predictor | Ridge | LASSO | Elastic Net |
+|----------|:-----:|:-----:|:-----------:|
+| failures | ✓ | ✓ | ✓ |
+| studytime | ✓ | ✓ | ✓ |
+| higher_yes | ✓ | ✓ | ✓ |
+| school_MS | ✓ | ✓ | ✓ |
+| schoolsup_yes | ✓ | ✓ | ✓ |
+| health | ✓ | ✓ | ✓ |
+| Medu / Fedu | ✓ | ✓ | ✓ |
+| Talc | ✓ | ✓ | ✓ |
+| Dalc | ✓ | ✗ | ✗ |
+| Walc | ✓ | ✗ | ✗ |
+
+**Table A4. Significant Predictors of Final Grade (Baseline Regression, p < 0.05)**
+
+| Variable | Coefficient | p-value | Interpretation |
+|---------|-------------|---------|----------------|
+| failures | -0.884 | <0.001 | Each SD increase in past failures is associated with a 0.88-point decrease in final grade |
+| higher_yes | +1.687 | <0.001 | Aspiring to higher education is associated with a 1.7-point increase in final grade |
+| schoolsup_yes | -1.603 | <0.001 | Receiving school support is associated with a 1.6-point decrease (likely reverse causation) |
+| school_MS | -1.394 | <0.001 | MS school students score about 1.4 points lower than GP students |
+| Fjob_services | -1.099 | 0.030 | Father working in services is associated with a 1.1-point decrease relative to at_home |
+| studytime | +0.300 | 0.011 | Each SD increase in study time corresponds to a 0.3-point increase in final grade |
+| health | -0.328 | 0.013 | Better self-reported health is associated with lower grades (likely confounded) |
+
+**Table A5. Selected Predictors Under AIC and BIC Stepwise Regression**
+
+| Variable            | AIC Model | BIC Model |
+|---------------------|-----------|-----------|
+| failures            | ✓         | ✓         |
+| school_MS           | ✓         | ✓         |
+| higher_yes          | ✓         | ✓         |
+| Talc                | ✓         | ✓         |
+| schoolsup_yes       | ✓         | ✓         |
+| studytime           | ✓         | ✓         |
+| health              | ✓         | ✓         |
+| Fedu                | ✓         |           |
+| reason_other        | ✓         |           |
+| absences            | ✓         |           |
+| Fjob_services       | ✓         |           |
+| reason_reputation   | ✓         |           |
