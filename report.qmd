@@ -100,7 +100,7 @@ No transformations were applied despite skewness. This decision was deliberate: 
 
 After removing leakage variables and adding the engineered `Talc` feature, the final cleaned dataset contains 649 observations and 32 variables. The cleaned dataset was saved for reproducibility and downstream modeling. At this stage, the data are internally consistent, free of leakage, and structured to support both interpretability-focused regression and more flexible predictive methods.
 
-# 4 Exploratory Data Analysis (EDA)
+# Exploratory Data Analysis (EDA)
 
 ![Distributions of Key Variables](graphs/eda_distributions.png){#fig-eda-dist width=50%}
 
@@ -169,8 +169,8 @@ To aid interpretation, component loadings for the first five principal component
 Finally, a biplot of the first two principal components was constructed, with observations projected into PC space and colored by final grade (`G3`). Variable loadings were overlaid as vectors to visualize how predictors align with the dominant axes of variation.
 
 
-## 5.2 Linear,Stepwise, and Penalized Regression
-### 5.2.1 Baseline Linear Regression
+## Linear,Stepwise, and Penalized Regression
+### Baseline Linear Regression
 
 As a benchmark for more complex models, a baseline linear regression was estimated to quantify the relationship between alcohol consumption, academic behavior, family background, and final academic performance. This model provides a transparent reference point for assessing both explanatory power and predictive performance.
 
@@ -187,7 +187,7 @@ An ordinary least squares (OLS) regression was fit on the training data using al
 
 The baseline model includes alcohol consumption measures (`Dalc`, `Walc`, and the constructed `Talc`), academic behavior variables (e.g., `failures`, `studytime`, `absences`), family background indicators, demographic characteristics, and social/lifestyle factors. This “kitchen-sink” specification is intentionally broad, serving as a comprehensive reference against which more parsimonious or regularized models can be compared.
 
-### 5.2.2 Stepwise Regression (AIC and BIC)
+### Stepwise Regression (AIC and BIC)
 
 To balance model interpretability and predictive performance, stepwise linear regression was applied using information-criterion–based feature selection. Starting from an intercept-only model, predictors were added sequentially using forward selection. At each step, the candidate variable that produced the greatest improvement in model fit was selected, as measured by either the Akaike Information Criterion (AIC) or the Bayesian Information Criterion (BIC).
 
@@ -195,7 +195,7 @@ Both procedures were implemented on the training set only to avoid information l
 
 The stepwise approach provides a contrast to the full baseline regression by explicitly removing redundant or weak predictors, allowing clearer assessment of whether alcohol-related variables remain important once irrelevant covariates are excluded.
 
-### 5.2.3 Penalized Regression (Ridge, LASSO, Elastic Net)
+### Penalized Regression (Ridge, LASSO, Elastic Net)
 
 Penalized regression methods were used to address multicollinearity, high dimensionality after one-hot encoding, and overfitting observed in the baseline linear model. These methods shrink coefficient magnitudes through regularization, improving stability and enabling variable selection.
 
@@ -203,7 +203,7 @@ The same training–test split (80/20) and preprocessing pipeline described earl
 
 Three models were estimated: First, a Ridge regression (L2 penalty), which shrinks correlated coefficients toward each other. Second, LASSO regression (L1 penalty), which performs shrinkage and variable selection by setting some coefficients to zero. Lastly the Elastic Net, which combines L1 and L2 penalties to balance sparsity and stability. The regularization parameter for each model was selected via cross-validation on the training set by minimizing mean squared error. Final models were refit using the optimal penalty and evaluated on the held-out test set.
 
-## 5.3 Random Forest
+## Random Forest
 After using linear regression to predict student grade as a continuous variable, we used random forest to classify their letter grade (A, B, C, etc.,) and performance (high-performing and low-performning). In Portugal, universities use a 0-20 scale grading system, which can be translated to the letter grade system used in the US as follows.
 
 | Portugal Grade | US grade | 
@@ -223,14 +223,14 @@ A random forest algorithm creates multiple decision trees and aggregate the resu
 
 After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at. We trained this model in python using the sklearn package.
 
-## 5.4 XGBoost
+## XGBoost
 Random forest is a very basic tree-based machine learning algorithm and we do not expect it to perform very well. Therefore, we also used XGBoost, a more sophisticated tree-based algorithm, to classify the letter grade and performance of students. We presented a detailed explanation of this algorithm in appendix 8.2 for readers who are interested to explore.
 
 After we trained the model, we will look at the top 20 important features the model used to classify student letter grade and performance. Also, we will present the confusion matrix and ROC curve to show where is the model failing at.
 
 We trained this model in python using the xgboost package.
 
-## 5.5 Neural Networks & Text Mining
+## Neural Networks & Text Mining
 
 To explore non-linear predictive capabilities and extract qualitative context from categorical data, we employed two complementary approaches: neural network classification and text mining.
 
